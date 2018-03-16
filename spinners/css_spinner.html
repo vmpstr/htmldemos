@@ -6,59 +6,76 @@ body {
 }
 svg {
   position: absolute;
-  animation: bounce 2s infinite;
-  animation-timing-function: ease-in-out;
-}
-#c1 { animation-delay: 0.00s; }
-#c2 { animation-delay: -0.33s; }
-#c3 { animation-delay: -0.66s; }
-#c4 { animation-delay: -1.00s; }
-#c5 { animation-delay: -1.33s; }
-#c6 { animation-delay: -1.66s; }
-
-@keyframes bounce {
- 0%, 100% { transform: translateY(-100%); }
- 50% { transform: translateY(100%); }
 }
 </style>
 
 <body>
-<svg id="c1"><circle /></svg>
-<svg id="c2"><circle /></svg>
-<svg id="c3"><circle /></svg>
-<svg id="c4"><circle /></svg>
-<svg id="c5"><circle /></svg>
-<svg id="c6"><circle /></svg>
+<svg><circle /></svg>
+<svg><circle /></svg>
+<svg><circle /></svg>
+<svg><circle /></svg>
+<svg><circle /></svg>
+<svg><circle /></svg>
+<svg><circle /></svg>
 </body>
 
 <script>
 function init() {
   let params = (new URL(document.location)).searchParams;
+  let svgs = document.getElementsByTagName("svg");
+  // Figure out dimensions.
   let total_d = params.has("d") ? params.get("d") : 300;
   if (total_d < 20)
     total_d = 20;
-  let d = total_d / 6;
+  let d = total_d / svgs.length;
   let center = d / 2;
   let radius = center - d / 10;
 
+  // Figure out background fill.
   let fill = params.has("c") ? params.get("c") : "green";
 
-  let svgs = document.getElementsByTagName("svg");
-  let running_left = 0;
-  for (let i = 0; i < svgs.length; ++i) {
-    svgs[i].setAttribute("width", d);
-    svgs[i].setAttribute("height", d);
-    svgs[i].style.left = running_left + "px";
-    svgs[i].style.top = total_d / 2 - center;
-    running_left += d;
-  }
-
+  // Update the circles with geometry and the fill.
   let circles = document.getElementsByTagName("circle");
   for (let i = 0; i < circles.length; ++i) {
     circles[i].setAttribute("cx", center);
     circles[i].setAttribute("cy", center);
     circles[i].setAttribute("r", radius);
     circles[i].setAttribute("fill", fill);
+  }
+
+  let running_left = 0;
+  let running_delay = 0;
+  let neg_transform = "translateY(-" + d + "px)";
+  let pos_transform = "translateY(" + d + "px)";
+
+  // Position the svgs and kick off the animation.
+  for (let i = 0; i < svgs.length; ++i) {
+    svgs[i].setAttribute("width", d);
+    svgs[i].setAttribute("height", d);
+    svgs[i].style.left = running_left + "px";
+    svgs[i].style.top = total_d / 2 - center;
+    running_left += d;
+
+    svgs[i].animate([
+      {
+        transform: neg_transform,
+        easing: "ease-in-out"
+      },
+      {
+        transform: pos_transform,
+        offset: 0.5,
+        easing: "ease-in-out"
+      },
+      {
+        transform: neg_transform,
+        easing: "ease-in-out"
+      }
+    ], {
+      iterations: Infinity,
+      duration: 2000,
+      delay: running_delay
+    });
+    running_delay -= 333;
   }
 }
 
