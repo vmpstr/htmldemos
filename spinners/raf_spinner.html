@@ -1,0 +1,158 @@
+<!doctype HTML>
+
+<style>
+body {
+  background: none transparent;
+}
+</style>
+
+<body>
+<svg>
+  <circle cx="0" cy="0" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <path stroke-width="1" />
+  <line x1="0" y1="0" stroke="black" />
+</svg>
+</body>
+
+<script>
+let deg_per_sec = 90;
+let last_time = 0;
+let data = {color : 0, start_angle: 0, end_angle: 0};
+let radius = 145;
+let lightness = 50;
+
+// Advances the current data based on time delta since the last frame.
+function updateData(delta) {
+  // Start with the same angle as last end angle.
+  let start_angle = data.end_angle;
+
+  // Cap the delta angle to 90deg to avoid incorrect path parameters.
+  let delta_deg = deg_per_sec * delta / 1000;
+  if (delta_deg >= 90)
+    delta_deg = 90;
+
+  // <= 17 ms is green
+  // >= 517ms is red
+  // Cap at "100" hue".
+  let color = 2 * (delta - 17) / 10;
+  if (color < 0)
+    color = 0
+  else if (color > 100)
+    color = 100;
+
+  // Hue 0 is actually red, so just invert the color.
+  color = 100 - color;
+
+  // Save off the values.
+  data.start_angle = start_angle;
+  // Make sure angle is in [0, 360).
+  data.end_angle = (data.start_angle + delta_deg) % 360;
+  data.color = color;
+}
+
+// Convert an angle to a point on the circle's circumference.
+function angleToPoint(angle) {
+  let rad = Math.PI * angle / 180;
+  return [Math.cos(rad) * radius, Math.sin(rad) * radius];
+}
+
+// Redraw the current state.
+function redrawSweep() {
+  let paths = document.getElementsByTagName("path");
+  // Advance all paths forward.
+  for (let i = 0; i < paths.length - 1; ++i) {
+    if (paths[i+1].getAttribute("d")) {
+      paths[i].setAttribute("d", paths[i+1].getAttribute("d"));
+      paths[i].setAttribute("fill", paths[i+1].getAttribute("fill"));
+      paths[i].setAttribute("stroke", paths[i+1].getAttribute("stroke"));
+    }
+  }
+
+  // Populate the last path with data.
+  let data_path = paths[paths.length - 1];
+
+  let start_point = angleToPoint(data.start_angle);
+  let end_point = angleToPoint(data.end_angle);
+
+  let d = "M0,0 ";
+  d += "L " + start_point[0] + " " + start_point[1] + " ";
+  d += "A " + radius + " " + radius + " " + "0 0 1 " + end_point[0] + " " + end_point[1];
+  d += " Z";
+
+  let hsl = "hsl(" + data.color + ", 100%, " + lightness + "%)";
+
+  data_path.setAttribute("d", d);
+  data_path.setAttribute("fill", hsl);
+  data_path.setAttribute("stroke", hsl);
+
+  // Update the sweeper as well.
+  let sweeper = document.getElementsByTagName("line")[0];
+  let p = angleToPoint(data.end_angle);
+  sweeper.setAttribute("x2", p[0]);
+  sweeper.setAttribute("y2", p[1]);
+}
+
+function update(timestamp) {
+  if (!last_time)
+    last_time = timestamp;
+
+  // Update the data, and redraw.
+  updateData(timestamp - last_time);
+  redrawSweep();
+  last_time = timestamp;
+
+  requestAnimationFrame(update);
+}
+
+function init() {
+  // Parse size query.
+  let params = (new URL(document.location)).searchParams;
+  let d = params.has("d") ? params.get("d") : 300;
+  if (d < 20)
+    d = 20;
+  let halfd = d / 2;
+
+  // Init global vars.
+  radius = halfd - d / 60;
+  lightness = params.has("l") ? params.get("l") : 50;
+
+  // Init the svg container sizes.
+  let svg = document.getElementsByTagName("svg")[0];
+  svg.setAttribute("width", d);
+  svg.setAttribute("height", d);
+  svg.setAttribute("viewBox", "-" + halfd + " -" + halfd + " " + d + " " + d);
+
+  // Init sweeper arm.
+  document.getElementsByTagName("line")[0].setAttribute("stroke-width", d / 100);
+
+  // Init background.
+  let fill = params.has("c") ? params.get("c") : "grey";
+  let background = document.getElementsByTagName("circle")[0];
+  background.setAttribute("r", radius);
+  background.setAttribute("fill", fill);
+
+}
+
+// Init and gogogo!
+init();
+requestAnimationFrame(update);
+</script>
