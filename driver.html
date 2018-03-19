@@ -1,0 +1,123 @@
+<!doctype HTML>
+
+<style>
+body, html {
+  padding: 0px;
+  margin: 0px;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  align-items: center;
+  background-color: #eeeeee;
+}
+#container {
+  will-change: transform;
+  display: grid;
+  grid-template: 1fr 5fr / 3fr 400px;
+  height: 99vh;
+  width: 99vw;
+}
+#controls_container {
+  grid-row: 1 / span 1;
+  grid-column: 1 / span 1;
+  height: 200px;
+  width: 100%;
+  min-width: 200px;
+  border: 1px solid black;
+}
+#test_container {
+  grid-row: 2 / span 1;
+  grid-column: 1 / span 2;
+  width: 100%;
+  height: 100%;
+  border: 1px solid black;
+  overflow: hidden;
+}
+
+.spinner_frame {
+  width: 150px;
+  height: 150px;
+}
+
+#spinner_container {
+  grid-row: 1 / span 1;
+  grid-column: 2 / span 1;
+  order: 1;
+  height: 200px;
+  min-width: 400px;
+  width: 100%;
+  border: 1px solid black;
+
+  display: grid;
+  grid-template: 150px 50px / 100%;
+}
+#spinners {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+#spinner_controls {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+#test_frame {
+  background-color: white;
+  width: 100%;
+  height: 100%;
+}
+
+</style>
+
+<div id="container">
+  <div id="controls_container">
+    <input id="refresh_test" type=button value="refresh test"></input>
+  </div>
+  <div id="spinner_container">
+    <div id="spinners">
+      <iframe id="css_spinner" class="spinner_frame" frameborder=0 scrolling=no src="spinners/css_spinner.html?d=150"></iframe>
+      <iframe id="raf_spinner" class="spinner_frame" frameborder=0 scrolling=no src="spinners/raf_spinner.html?d=150"></iframe>
+    </div>
+    <div id="spinner_controls">
+      <input id="hide_css_spinner" type=button value="toggle css spinner"></input>
+      <input id="hide_raf_spinner" type=button value="toggle raf spinner"></input>
+    </div>
+  </div>
+  <div id="test_container">
+    <iframe id="test_frame" frameborder=0 src="../tests/dl/worker_test.html"></iframe>
+  </div>
+</div>
+
+<script>
+function init() {
+  let hide_css_spinner = document.getElementById("hide_css_spinner");
+  hide_css_spinner.addEventListener("click", function() {
+    let spinner = document.getElementById("css_spinner");
+    let hidden = spinner.style.visibility === "hidden";
+    if (hidden) {
+      spinner.style.visibility = "visible";
+    } else {
+      spinner.style.visibility = "hidden";
+    }
+  });
+
+  let hide_raf_spinner = document.getElementById("hide_raf_spinner");
+  hide_raf_spinner.addEventListener("click", function() {
+    let spinner = document.getElementById("raf_spinner");
+    let hidden = spinner.style.visibility === "hidden";
+    if (hidden) {
+      spinner.style.visibility = "visible";
+    } else {
+      spinner.style.visibility = "hidden";
+    }
+  });
+
+  let refresh_test = document.getElementById("refresh_test");
+  refresh_test.addEventListener("click", function() {
+    let test_frame = document.getElementById("test_frame");
+    test_frame.src = test_frame.src;
+  });
+}
+
+init();
+</script>
