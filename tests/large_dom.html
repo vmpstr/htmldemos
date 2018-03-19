@@ -1,0 +1,184 @@
+<!doctype HTML>
+
+<style>
+#container {
+  width: 500px;
+  height: 500px;
+  will-change: transform;
+}
+
+#dom_container {
+  width: 100%;
+  height: 100%;
+  background-color: lightblue;
+  contain: content;
+}
+.dom_element {
+  width: 50px;
+  float: left;
+}
+#overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left; 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index = 10;
+}
+#spinner {
+  width: 50px;
+  height: 50px;
+  border: 6px dotted white;
+  border-radius: 50%;
+  position: relative;
+  top: calc(50% - 25px);
+  left: calc(50% - 25px);
+}
+#log {
+  width: calc(100% - 550px);
+  position: fixed;
+  top:10px;
+  left: 550px;
+}
+#frame {
+  width: 300px;
+  height: 300px;
+  overflow: hidden;
+  margin: none;
+  padding: none;
+  border: none;
+  border: 1px solid black;
+}
+</style>
+
+<div id="container">
+  <div id="dom_container">
+  </div>
+  <div id="overlay">
+    <div id="spinner"></div>
+  </div>
+</div>
+<div id="log"></div>
+
+<script>
+function log(message) {
+  let text = document.createElement("div");
+  text.innerHTML = message;
+  document.getElementById("log").appendChild(text);
+}
+  
+///////////////// large dom
+var large_dom;
+function randomColor() {
+  var letters = "0123456789ABCDEF";
+  var color = "#";
+  for (var i = 0; i < 6; ++i) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
+function createElement(type, depth) {
+  var element = document.createElement(type);
+  element.innerHTML = depth;
+  element.style = "width: 20px; height: 20px; background-color: " + randomColor(); + ";";
+  return element;
+}
+
+function generate(depth, branch) {
+  var element = createElement((depth % 2 == 0) ? "span" : "div", depth);
+  if (depth == 0)
+    return element;
+  for (let i = 0; i < branch; ++i) {
+    element.appendChild(generate(depth - 1, branch));
+  }
+  return element;
+}
+
+function generateLargeDom() {
+  large_dom = generate(5, 6);
+}
+
+
+/////////////// workers
+var active_workers = 0;
+var spinning = false;
+var rotation = 0;
+var rotation_speed = 3;
+async function waitForFinish(lock) {
+  if (active_workers == 0) {
+    log("all workers finished.");
+    if (lock) {
+      log("waiting for lock commit");
+      await lock.commit();
+    } else {
+      log("no lock to commit");
+    }
+    document.getElementById("overlay").style.display = "none";
+    spinning = false;
+    return;
+  }
+  setTimeout(function() { waitForFinish(lock); }, 16);
+}
+
+function spin() {
+  if (!spinning)
+    return;
+
+  document.getElementById("spinner").style.transform = "rotate(" + rotation + "deg" + ")";
+  rotation += rotation_speed;
+  requestAnimationFrame(spin);
+}
+
+function startSpinning() {
+  spinning = true;
+  spin();
+}
+
+async function go() {
+  startSpinning();
+
+  let element = document.getElementById("dom_container");
+  let lock = element.getDisplayLock ? element.getDisplayLock() : undefined;
+  if (lock) {
+    log("waiting for lock");
+    await lock.acquire();
+  } else {
+    log("proceeding with no lock");
+  }
+
+  let workers = [];
+  let worker_count = document.getElementsByClassName("dom_element").length;
+  for (var i = 0; i < worker_count; ++i) {
+    ++active_workers;
+    let index = i;
+    log("created worker " + index);
+    setTimeout(function() {
+      document.getElementById(index).appendChild(large_dom.cloneNode(true));
+      log("worker " + index + " finished");
+      --active_workers;
+    }, index * 100);
+  }
+  waitForFinish(lock);
+}
+
+function init() {
+  let params = (new URL(document.location)).searchParams;
+  let container = document.getElementById("dom_container");
+  let num_dom_elements = params.has("n") ? params.get("n") : 10;
+  for (let i = 0; i < num_dom_elements; ++i) {
+    let dom_element = document.createElement("div");
+    dom_element.className = "dom_element";
+    dom_element.id = num_dom_elements - i - 1;
+    container.appendChild(dom_element);
+  }
+}
+
+window.onload = function() {
+  init();
+  generateLargeDom();
+  go();
+}
+
+</script>
