@@ -2,9 +2,7 @@
 
 <style>
 #container {
-  width: 500px;
-  height: 500px;
-  will-change: transform;
+  position: relative;
 }
 
 #dom_container {
@@ -12,17 +10,20 @@
   height: 100%;
   background-color: lightblue;
   contain: content;
+  /* this should not be necessary. crbug.com/826189. */
+  overflow: hidden;
+  /* make sure scrolling is smooth by promoting to a layer */
+  will-change: transform;
 }
 .dom_element {
-  width: 50px;
   float: left;
 }
 #overlay {
   position: absolute;
   width: 100%;
   height: 100%;
-  top: 0;
-  left; 0;
+  top: 0px;
+  left; 0px;
   background-color: rgba(0, 0, 0, 0.7);
   z-index = 10;
 }
@@ -36,25 +37,12 @@
   left: calc(50% - 25px);
 }
 #log {
-  width: calc(100% - 550px);
   position: fixed;
-  top:10px;
-  left: 550px;
-}
-#frame {
-  width: 300px;
-  height: 300px;
-  overflow: hidden;
-  margin: none;
-  padding: none;
-  border: none;
-  border: 1px solid black;
 }
 </style>
 
 <div id="container">
-  <div id="dom_container">
-  </div>
+  <div id="dom_container"></div>
   <div id="overlay">
     <div id="spinner"></div>
   </div>
@@ -62,6 +50,7 @@
 <div id="log"></div>
 
 <script>
+///////////////// log
 function log(message) {
   let text = document.createElement("div");
   text.innerHTML = message;
@@ -69,6 +58,10 @@ function log(message) {
 }
   
 ///////////////// large dom
+var large_dom_settings = {
+  depth: 0,
+  branch: 0
+};
 var large_dom;
 function randomColor() {
   var letters = "0123456789ABCDEF";
@@ -97,7 +90,7 @@ function generate(depth, branch) {
 }
 
 function generateLargeDom() {
-  large_dom = generate(5, 6);
+  large_dom = generate(large_dom_settings.depth, large_dom_settings.branch);
 }
 
 
@@ -163,16 +156,39 @@ async function go() {
   waitForFinish(lock);
 }
 
+///////////////// Initialization.
 function init() {
   let params = (new URL(document.location)).searchParams;
-  let container = document.getElementById("dom_container");
-  let num_dom_elements = params.has("n") ? params.get("n") : 10;
-  for (let i = 0; i < num_dom_elements; ++i) {
+
+  // Dimensions.
+  let w = Math.max(params.has("w") ? params.get("w") : 500, 100);
+  let h = Math.max(params.has("h") ? params.get("h") : 500, 100);
+  let container = document.getElementById("container");
+  container.style.width = w + "px";
+  container.style.height = h + "px";
+
+  // Create the requested number of top level containers, or default to 10.
+  let dom_container = document.getElementById("dom_container");
+  let dom_element_count = Math.max(1, params.has("n") ? params.get("n") : 10);
+  let dom_child_w = w / dom_element_count;
+  for (let i = 0; i < dom_element_count; ++i) {
     let dom_element = document.createElement("div");
     dom_element.className = "dom_element";
-    dom_element.id = num_dom_elements - i - 1;
-    container.appendChild(dom_element);
+    dom_element.style.width = dom_child_w + "px";
+    dom_element.id = i;
+    // Insert the elements in reverse order.
+    dom_container.insertBefore(dom_element, dom_container.firstChild);
   }
+
+  // Get the "generate large dom" parameters.
+  large_dom_settings.depth = params.has("depth") ? params.get("depth") : 5;
+  large_dom_settings.branch = params.has("branch") ? params.get("branch") : 6;
+  
+  // Do we want a log?
+  let log = document.getElementById("log");
+  log.style.display = params.has("l") && params.get("l") !== "0" ? "block" : "none";
+  log.style.top = "10px";
+  log.style.left = (w + 50) + "px";
 }
 
 window.onload = function() {
