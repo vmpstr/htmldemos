@@ -3,17 +3,18 @@
 <style>
 #container {
   position: relative;
+  will-change: transform;
 }
 
 #dom_container {
   width: 100%;
   height: 100%;
-  background-color: lightblue;
+  background-color: white;
   contain: content;
   /* this should not be necessary. crbug.com/826189. */
   overflow: hidden;
   /* make sure scrolling is smooth by promoting to a layer */
-  will-change: transform;
+  /*will-change: transform;*/
 }
 .dom_element {
   float: left;
@@ -93,6 +94,8 @@ function generateLargeDom() {
   large_dom = generate(large_dom_settings.depth, large_dom_settings.branch);
 }
 
+// params
+var use_display_lock = 1;
 
 /////////////// workers
 var active_workers = 0;
@@ -133,7 +136,7 @@ async function go() {
   startSpinning();
 
   let element = document.getElementById("dom_container");
-  let lock = element.getDisplayLock ? element.getDisplayLock() : undefined;
+  let lock = use_display_lock && element.getDisplayLock ? element.getDisplayLock() : undefined;
   if (lock) {
     log("waiting for lock");
     await lock.acquire();
@@ -160,6 +163,8 @@ async function go() {
 function init() {
   let params = (new URL(document.location)).searchParams;
 
+  use_display_lock = params.has("dl") && params.get("dl") === "1";
+
   // Dimensions.
   let w = Math.max(params.has("w") ? params.get("w") : 500, 100);
   let h = Math.max(params.has("h") ? params.get("h") : 500, 100);
@@ -182,7 +187,7 @@ function init() {
 
   // Get the "generate large dom" parameters.
   large_dom_settings.depth = params.has("depth") ? params.get("depth") : 5;
-  large_dom_settings.branch = params.has("branch") ? params.get("branch") : 6;
+  large_dom_settings.branch = params.has("branch") ? params.get("branch") : 5;
   
   // Do we want a log?
   let log = document.getElementById("log");

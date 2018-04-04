@@ -71,7 +71,13 @@ body, html {
 
 <div id="container">
   <div id="controls_container">
-    <input id="refresh_test" type=button value="refresh test"></input>
+    <div>
+      <input id="use_display_lock" type="checkbox" checked></input>
+      <label for="use_display_lock">use DisplayLock</label>
+    </div>
+    <div>
+      <input id="refresh_test" type=button value="refresh test"></input>
+    </div>
   </div>
   <div id="spinner_container">
     <div id="spinners">
@@ -84,7 +90,7 @@ body, html {
     </div>
   </div>
   <div id="test_container">
-    <iframe id="test_frame" frameborder=0 src="tests/large_dom.html?n=10"></iframe>
+    <iframe id="test_frame" frameborder=0 src="tests/large_dom.html?n=10&dl=1"></iframe>
   </div>
 </div>
 
@@ -115,7 +121,8 @@ function init() {
   let refresh_test = document.getElementById("refresh_test");
   refresh_test.addEventListener("click", function() {
     let test_frame = document.getElementById("test_frame");
-    test_frame.src = test_frame.src;
+    let use_dl = document.getElementById("use_display_lock");
+    test_frame.src = "tests/large_dom.html?n=10&dl=" + (use_dl.checked ? "1" : "0");
   });
 }
 
