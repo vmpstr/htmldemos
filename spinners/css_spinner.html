@@ -47,13 +47,15 @@ function init() {
   let running_delay = 0;
   let neg_transform = "translateY(-" + d + "px)";
   let pos_transform = "translateY(" + d + "px)";
+  console.log(neg_transform);
+  console.log(pos_transform);
 
   // Position the svgs and kick off the animation.
   for (let i = 0; i < svgs.length; ++i) {
     svgs[i].setAttribute("width", d);
     svgs[i].setAttribute("height", d);
     svgs[i].style.left = running_left + "px";
-    svgs[i].style.top = total_d / 2 - center;
+    svgs[i].style.top = total_d / 2 - center + "px";
     running_left += d;
 
     svgs[i].animate([
