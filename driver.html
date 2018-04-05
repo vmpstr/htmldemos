@@ -20,7 +20,6 @@ body, html {
 #controls_container {
   grid-row: 1 / span 1;
   grid-column: 1 / span 1;
-  height: 200px;
   width: 100%;
   min-width: 200px;
   border: 1px solid black;
@@ -43,7 +42,6 @@ body, html {
   grid-row: 1 / span 1;
   grid-column: 2 / span 1;
   order: 1;
-  height: 200px;
   min-width: 400px;
   width: 100%;
   border: 1px solid black;
@@ -67,14 +65,17 @@ body, html {
   height: 100%;
 }
 
+#controls_frame {
+  visibility: hidden;
+  width: 1px;
+  height: 1px;
+}
+
 </style>
 
 <div id="container">
   <div id="controls_container">
-    <div>
-      <input id="use_display_lock" type="checkbox" checked></input>
-      <label for="use_display_lock">use DisplayLock</label>
-    </div>
+    <iframe id="controls_frame" frameborder=0 scrolling=no src="tests/large_dom_control.html"></iframe>
     <div>
       <input id="refresh_test" type=button value="refresh test"></input>
     </div>
@@ -90,11 +91,24 @@ body, html {
     </div>
   </div>
   <div id="test_container">
-    <iframe id="test_frame" frameborder=0 src="tests/large_dom.html?n=10&dl=1"></iframe>
+    <iframe id="test_frame" frameborder=0 src=""></iframe>
   </div>
 </div>
 
 <script>
+function processMessage(e) {
+  if (e.data.controls_dimensions !== undefined) {
+    let controls_frame = document.getElementById("controls_frame");
+    let dimensions = e.data.controls_dimensions;
+    controls_frame.style.width = dimensions[0] + "px";
+    controls_frame.style.height = dimensions[1] + "px";
+    controls_frame.style.visibility = "visible";
+  } else if (e.data.test_url !== undefined) {
+    let test_frame = document.getElementById("test_frame");
+    test_frame.src = e.data.test_url;
+  }
+}
+
 function init() {
   let hide_css_spinner = document.getElementById("hide_css_spinner");
   hide_css_spinner.addEventListener("click", function() {
@@ -120,10 +134,11 @@ function init() {
 
   let refresh_test = document.getElementById("refresh_test");
   refresh_test.addEventListener("click", function() {
-    let test_frame = document.getElementById("test_frame");
-    let use_dl = document.getElementById("use_display_lock");
-    test_frame.src = "tests/large_dom.html?n=10&dl=" + (use_dl.checked ? "1" : "0");
+    let controls_frame = document.getElementById("controls_frame");
+    controls_frame.contentWindow.postMessage("get_test_url", "*");
   });
+
+  window.addEventListener("message", processMessage, false);
 }
 
 init();

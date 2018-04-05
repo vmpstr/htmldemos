@@ -96,6 +96,7 @@ function generateLargeDom() {
 
 // params
 var use_display_lock = 1;
+var use_spinner = 1;
 
 /////////////// workers
 var active_workers = 0;
@@ -128,6 +129,8 @@ function spin() {
 }
 
 function startSpinning() {
+  if (!use_spinner)
+    return;
   spinning = true;
   spin();
 }
@@ -194,6 +197,10 @@ function init() {
   log.style.display = params.has("l") && params.get("l") !== "0" ? "block" : "none";
   log.style.top = "10px";
   log.style.left = (w + 50) + "px";
+
+  use_spinner = params.has("s") && params.get("s") !== "0";
+  let overlay = document.getElementById("overlay");
+  overlay.style.display = use_spinner ? "block" : "none";
 }
 
 window.onload = function() {

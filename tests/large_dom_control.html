@@ -1,0 +1,207 @@
+<!doctype HTML>
+
+<style>
+body {
+  padding: 5px;
+  margin: 0px;
+}
+
+#top_level_container {
+  display: grid;
+  width: max-content;
+  grid-template: auto / repeat(2, auto);
+}
+
+#test_fieldset {
+  width: max-content;
+  grid-column: 1 / span 1;
+}
+
+#test_fieldset > div {
+  display: grid;
+  grid-template: repeat(5, auto) / repeat(2, auto);
+}
+
+#width_input {
+  width: 50px;
+}
+
+#height_input {
+  width: 50px;
+}
+
+#num_dom_blocks_input {
+  width: 35px;
+}
+
+#width_container {
+  grid-area: 1 / 1 / span 1 / span 1;
+}
+
+#height_container {
+  grid-area: 1 / 2 / span 1 / span 1;
+}
+
+#num_dom_blocks_container {
+  grid-area: 2 / 1 / span 1 / span 2;
+}
+
+#log_container {
+  grid-area: 3 / 1 / span 1 / span 2;
+}
+
+#spinner_container {
+  grid-area: 4 / 1 / span 1 / span 2;
+}
+
+#display_lock_container {
+  grid-area: 5 / 1 / span 1 / span 2;
+}
+
+#dom_fieldset {
+  grid-column: 2 / span 1;
+}
+
+#dom_fieldset > div {
+  display: grid;
+  grid-template: repeat(2, auto) / repeat(2, auto);
+}
+
+#depth_input {
+  width: 35px;
+}
+
+#branching_input {
+  width: 35px;
+}
+
+#dom_params_log {
+  grid-area: 3 / 1 / span 1 / span 2;
+  font-size: 80%;
+}
+
+</style>
+
+<div id="top_level_container">
+  <fieldset id="test_fieldset">
+    <legend>test</legend>
+    <div>
+      <div id="width_container">
+        width: <input id="width_input" type="number" value="500"></input>
+      </div>
+      <div id="height_container">
+        height: <input id="height_input" type="number" value="500"></input>
+      </div>
+      <div id="num_dom_blocks_container">
+        num dom blocks: <input id="num_dom_blocks_input" type="number" value="10"></input>
+      </div>
+      <div id="log_container">
+        <input id="log_input" type="checkbox"></input>
+        <label for="log_input">log</label>
+      </div>
+      <div id="spinner_container">
+        <input id="spinner_input" type="checkbox" checked></input>
+        <label for="spinner_input">spinner</label>
+      </div>
+      <div id="display_lock_container">
+        <input id="display_lock_input" type="checkbox"></input>
+        <label for="display_lock_input">display lock</label>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset id="dom_fieldset">
+    <legend>dom</legend>
+    <div>
+      <div>depth:&nbsp;</div><div><input id="depth_input" type="number" value="5"></input></div>
+      <div>branching:&nbsp;</div><div><input id="branching_input" type="number" value="5"></input></div>
+      <div id="dom_params_log">hello</div>
+    </div>
+  </fieldset>
+</div>
+
+<script>
+var max_elements_to_request = 80000;
+var sent_dimensions;
+
+function init() {
+  let dimensions = computeDimensions();
+  parent.postMessage({ controls_dimensions: dimensions }, "*");
+  sent_dimensions = dimensions;
+  parent.postMessage({ test_url: generateTestUrl() }, "*");
+  
+  let display_lock_input = document.getElementById("display_lock_input");
+  let container = document.getElementById("top_level_container");
+  if (container.getDisplayLock) {
+    display_lock_input.checked = true;
+  } else {
+    display_lock_input.disabled = true;
+    display_lock_input.title = "getDisplayLock() is not available on this browser.";
+  }
+
+  let depth_input = document.getElementById("depth_input");
+  depth_input.addEventListener("change", domParamsChanged, false);
+  let branching_input = document.getElementById("branching_input");
+  branching_input.addEventListener("change", domParamsChanged, false);
+  domParamsChanged();
+}
+
+function processMessage(e) {
+  if (e.data === "get_test_url") {
+    parent.postMessage({ test_url: generateTestUrl() }, "*");
+  }
+}
+
+function estimatedElementCount() {
+  let depth = document.getElementById("depth_input").value;
+  let branch = document.getElementById("branching_input").value;
+  return Math.pow(branch, depth);
+}
+
+function domParamsChanged() {
+  let estimate = estimatedElementCount();
+  let log = document.getElementById("dom_params_log");
+  log.innerHTML = "~" + estimate + " elements.";
+  if (estimate > max_elements_to_request) {
+    log.style.color = "red";
+    log.innerHTML += "<br>will not use params.";
+  } else {
+    log.style.color = "black";
+  }
+
+  // If changing the HTML caused us to change dimensions, send that info to the parent.
+  let dimensions = computeDimensions();
+  if (dimensions[0] != sent_dimensions[0] || dimensions[1] != sent_dimensions[1]) {
+    parent.postMessage({ controls_dimensions: dimensions }, "*");
+    sent_dimensions = dimensions;
+  }
+}
+
+function generateTestUrl() {
+  let url = "tests/large_dom.html?";
+  url += "w=" + document.getElementById("width_input").value;
+  url += "&h=" + document.getElementById("height_input").value;
+  url += "&n=" + document.getElementById("num_dom_blocks_input").value;
+  url += "&l=" + (document.getElementById("log_input").checked ? 1 : 0);
+  url += "&s=" + (document.getElementById("spinner_input").checked ? 1 : 0);
+  url += "&dl=" + (document.getElementById("display_lock_input").checked ? 1 : 0);
+  if (estimatedElementCount() <= max_elements_to_request) {
+    url += "&depth=" + document.getElementById("depth_input").value;
+    url += "&branch=" + document.getElementById("branching_input").value;
+  }
+  return url;
+}
+
+function computeDimensions() {
+  let container = document.getElementById("top_level_container");
+  let width = container.clientWidth + 5;
+  // Firefox gets 0 for clientWidth, not sure why.
+  if (width == 5)
+    width = 505;
+  let height = container.clientHeight + 5;
+  return [width, height];
+}
+
+window.onload = init;
+window.addEventListener("message", processMessage, false);
+</script>
