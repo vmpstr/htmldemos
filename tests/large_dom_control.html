@@ -128,7 +128,6 @@ function init() {
   let dimensions = computeDimensions();
   parent.postMessage({ controls_dimensions: dimensions }, "*");
   sent_dimensions = dimensions;
-  parent.postMessage({ test_url: generateTestUrl() }, "*");
   
   let display_lock_input = document.getElementById("display_lock_input");
   let container = document.getElementById("top_level_container");
@@ -144,6 +143,7 @@ function init() {
   let branching_input = document.getElementById("branching_input");
   branching_input.addEventListener("change", domParamsChanged, false);
   domParamsChanged();
+  parent.postMessage({ test_url: generateTestUrl() }, "*");
 }
 
 function processMessage(e) {

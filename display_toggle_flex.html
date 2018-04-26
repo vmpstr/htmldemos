@@ -1,0 +1,168 @@
+<!doctype HTML>
+
+<style>
+div {
+  position: relative;
+  width: 500px;
+  height: 500px;
+}
+#container {
+  opacity: 0.3;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  will-change: transform;
+  contain: content;
+}
+#dom_container {
+  background-color: white;
+  /* this should not be necessary. crbug.com/826189. */
+  overflow: hidden;
+  /* make sure scrolling is smooth by promoting to a layer */
+  /*will-change: transform;*/
+}
+#overlay {
+  background-color: lightblue;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  display: none;
+}
+.dom_element {
+  display: flex;
+  justify-contents: space-between;
+  float: left;
+}
+input {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+iframe {
+  width: 150px;
+  height: 150px;
+  position: absolute;
+  top: calc(50% - 75px);
+  left: calc(50% - 75px);
+  z-index: 1;
+  will-change: transform;
+}
+
+.tiny0 {
+  display: flex;
+  flex-direction: column-reverse;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.tiny1 {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: no-wrap;
+  justify-content: space-around;
+}
+.tiny2 {
+  display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-start;
+}
+
+</style>
+
+<div>
+  <div id="container">
+    <div id="dom_container"></div>
+    <div id="overlay"></div>
+  </div>
+  <iframe frameborder=0 scrolling=no src="spinners/raf_spinner.html?&d=150"></iframe>
+  <br />
+  <input id="toggle" type="button" value="toggle"></input>
+</div>
+
+<script>
+var large_dom_settings = {
+  depth: 5,
+  branch: 3 
+};
+var large_dom;
+function randomColor() {
+  var letters = "0123456789ABCDEF";
+  var color = "#";
+  for (var i = 0; i < 6; ++i) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
+function createElement(type, depth) {
+  var element = document.createElement(type);
+  element.innerHTML = depth;
+  element.style = "width: 20px; height: 20px; background-color: " + randomColor(); + ";";
+  return element;
+}
+
+function generate(depth, branch) {
+  var element = createElement((depth % 2 == 0) ? "span" : "div", depth);
+  element.className = "tiny" + Math.floor(Math.random() * 3);
+  if (depth == 0)
+    return element;
+  for (let i = 0; i < branch; ++i) {
+    element.appendChild(generate(depth - 1, branch));
+  }
+  return element;
+}
+
+var visible = true;
+async function onClick() {
+  let start = window.performance.now();
+  visible = !visible;
+  let element = document.getElementById("dom_container");
+  let lock_element = document.getElementById("container");
+  let lock = lock_element.getDisplayLock ? lock_element.getDisplayLock() : undefined;
+  if (lock) {
+    console.log("waiting for lock");
+    await lock.acquire();
+  }
+
+  if (visible)
+    element.style.display = "block";
+  else
+    element.style.display = "none";
+  
+  if (lock) {
+    console.log("committing\n");
+    lock.commit().then(function() { onToggled(lock, start) });
+  } else {
+    console.log("sync done\n");
+    onToggled(undefined, start);
+  }
+}
+
+function onToggled(lock, start) {
+  console.log(window.performance.now() - start);
+  document.getElementById("overlay").style.display = visible ? "none" : "block";
+}
+
+function generateLargeDom() {
+  large_dom = generate(large_dom_settings.depth, large_dom_settings.branch);
+}
+
+console.log("generate");
+generateLargeDom();
+console.log("attach");
+for (let i = 0; i < 50; ++i) {
+  let dom_element = document.createElement("div");
+  dom_element.className = "dom_element";
+  dom_element.style.width = "50px";
+  dom_element.id = i;
+  dom_element.appendChild(large_dom.cloneNode(true));
+  dom_container.appendChild(dom_element);
+}
+console.log("done");
+
+let toggle = document.getElementById("toggle");
+toggle.addEventListener("click", onClick);
+</script>
