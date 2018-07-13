@@ -1,0 +1,149 @@
+<!doctype HTML>
+
+<style>
+#list_container {
+  width: 600px;
+  background-color: lightyellow;
+}
+.collapsed {
+  width: 100%;
+  height: 20px;
+  background-color: lightblue;
+  margin: 5px;
+
+  contain: paint;
+  overflow: hidden;
+}
+.expanded {
+  background-color: lightgreen;
+  /*height: 300px;*/
+  margin: 5px;
+  width: 100%;
+
+  contain: paint;
+  overflow: hidden;
+}
+
+.odd {
+  background-color: lightblue;
+  border: 1px solid blue;
+
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+.even {
+  background-color: lightgreen;
+  border: 1px solid green;
+
+  display: flex;
+  align-items: stretch;
+  flex-direction: row;
+  flex: 1 1 auto;
+}
+
+.spinner_frame {
+  width: 150px;
+  height: 150px;
+  position: absolute;
+  right: 50px;
+  top: 50px;
+  isolation: isolate;
+  will-change: transform;
+}
+</style>
+
+<div id="list_container">
+  <div class="collapsed"></div>
+  <div class="collapsed"></div>
+  <div class="collapsed"></div>
+  <div class="collapsed"></div>
+  <div class="collapsed"></div>
+  <div class="collapsed"></div>
+  <div class="collapsed"></div>
+  <div class="collapsed"></div>
+  <div class="collapsed"></div>
+  <div class="collapsed"></div>
+</div>
+
+<iframe class="spinner_frame" frameborder=0 scrolling=no src="../spinners/raf_spinner.html?d=150"></iframe>
+
+<script>
+function init() {
+  var items = document.getElementsByClassName("collapsed");
+  for (var i = 0; i < items.length; ++i) {
+    items[i].addEventListener("click", toggle_collapse);
+  }
+}
+
+function toggle_collapse(e) {
+  // Find expanded or collapsed target first.
+  var target;
+  for (var i = 0; i < e.path.length; ++i) {
+    if (e.path[i].className === "expanded" ||
+        e.path[i].className === "collapsed") {
+      target = e.path[i];
+      break;
+    }
+  }
+
+  if (target.className === "collapsed") {
+    window.requestAnimationFrame(function() {
+      populate_lorem_ipsum(target);
+    });
+  } else if (target.className === "expanded") {
+    target.innerHTML = "";
+    target.className = "collapsed";
+  }
+}
+
+function populate_lorem_ipsum(element) {
+  var text_container = document.createElement("div");
+  text_container.className = "text_container";
+  text_container.appendChild(generate_slow_dom());
+
+  element.appendChild(text_container);
+  element.className = "expanded";
+}
+
+var lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras " +
+  "convallis posuere nunc, vitae facilisis sem hendrerit eu. Maecenas lorem " +
+  "urna, iaculis nec porta quis, mattis id velit. Donec et dictum tellus. " +
+  "Suspendisse laoreet faucibus lobortis. Donec sodales vel tellus eu " + 
+  "cursus. Sed maximus condimentum leo non viverra. In hac habitasse platea " +
+  "dictumst. Proin faucibus cursus iaculis. Curabitur odio ex, aliquet " +
+  "euismod finibus et, dapibus vel felis. Aliquam erat volutpat. Sed sit " +
+  "amet venenatis augue."
+lorem = lorem.split(" ");
+
+function generate_lorem_ipsum() {
+  var result = lorem[0];
+  var words = Math.random() * 300;
+  for (var i = 1; i < words; ++i) {
+    result += " " + lorem[i % lorem.length];
+  }
+  return result;
+}
+
+function generate_slow_dom() {
+  var div = document.createElement("div");
+  div.style.width = "600px";
+  div.style.height = "" + (300 + Math.trunc(Math.random() * 300)) + "px";
+  div.className = "odd";
+  div.style.isolation = "isolate";
+  go(div, Math.trunc(6));
+  return div;
+}
+
+function go(p, depth) {
+  var div = document.createElement("div");
+  div.className = (depth % 2) == 0 ? "even" : "odd";
+  if (depth > 0)
+    go(div, depth - 1);
+  for (var i = 0; i < 5; ++i)
+    p.appendChild(div.cloneNode(true));
+}
+
+init();
+</script>
