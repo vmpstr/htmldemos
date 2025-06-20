@@ -1,0 +1,150 @@
+<!doctype html>
+
+<style>
+/* nested contributions */
+::view-transition-group-children(*) {
+  overflow: clip;
+}
+
+.nested .container,
+.nested .card {
+  view-transition-group: contain;
+}
+/* end nested contributions */
+
+
+:root { view-transition-name: none; }
+.slow::view-transition-group(*) {
+  animation-duration: 2s;
+}
+::view-transition-old(*.control),
+::view-transition-new(*.control) {
+  height: 100%;
+  object-fit: fill;
+}
+
+
+
+.container {
+  view-transition-name: container;
+  padding: 20px;
+  width: 400px;
+  height: 400px;
+  border: 2px solid blue;
+  border-radius: 20px;
+  display: inline-block;
+  overflow: auto;
+}
+.row {
+  display: flex;
+  justify-content: center;
+}
+.hero {
+  view-transition-name: hero;
+  width: 50px;
+  height: 50px;
+  border: 1px dashed black;
+  float: left;
+  margin: 10px;
+}
+.container.center .hero {
+  float: none;
+  margin: auto;
+}
+.sidecontrol {
+  display: block;
+  width: auto;
+  height: 165px;
+  flex-grow: 1;
+}
+.control {
+  view-transition-name: match-element;
+  view-transition-class: control;
+  height: 25px;
+  background: lightgrey;
+  border: 1px grey;
+  border-radius: 10px;
+  margin: 10px;
+}
+
+.card {
+  view-transition-name: card;
+  width: 40%;
+  display: inline-block;
+  padding: 10px;
+  height: 150px;
+  overflow: scroll;
+
+  border: 2px solid black;
+  border-radius: 20px;
+}
+.text {
+  view-transition-name: text;
+}
+</style>
+
+<div>
+<input type=radio id=float name=layout value=float checked />
+<label for=float>floating</label>
+<input type=radio id=center name=layout value=center />
+<label for=center>center</label>
+</div>
+
+<div id=container class=container>
+  <div id=out>
+  <div id=row class=row>
+    <div class=card>
+      <div class=hero></div>
+      <div class=text>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc suscipit,
+        libero et mattis lobortis, quam nibh ultricies tortor, ut faucibus nisl
+        lorem non mi. Nam.
+      </div>
+    </div>
+    <div id=move class=sidecontrol>
+      <div class=control></div>
+      <div class=control></div>
+      <div class=control></div>
+      <div class=control></div>
+      <div class=control></div>
+    </div>
+  </div>
+  </div>
+  <div class=control></div>
+  <div class=control></div>
+  <div class=control></div>
+  <div class=control></div>
+  <div class=control></div>
+  <div class=control></div>
+  <div class=control></div>
+</div>
+
+<div>
+<input type=checkbox id=nested>
+<label for=nested>use nested</label>
+<input type=checkbox id=slow>
+<label for=slow>slow down</label>
+</div>
+
+<script>
+const layoutChange = e => {
+  document.startViewTransition(() =>  {
+    if (float.checked) {
+      container.classList.remove("center");
+      row.appendChild(move);
+    } else if (center.checked) {
+      container.classList.add("center");
+      out.appendChild(move);
+    }
+  });
+};
+
+const init = () => { 
+  float.addEventListener("change", layoutChange);
+  center.addEventListener("change", layoutChange);
+  slow.addEventListener("change", () => { document.documentElement.classList.toggle("slow") });
+  nested.addEventListener("change", () => { document.documentElement.classList.toggle("nested") });
+};
+
+onload = init;
+</script>
