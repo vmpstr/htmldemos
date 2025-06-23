@@ -1,0 +1,176 @@
+<!doctype html>
+
+<style>
+.nested::view-transition-group-children(*) {
+  overflow: clip;
+}
+
+.nested .list {
+  view-transition-group: contain;
+}
+.nested .item {
+  view-transition-group: contain;
+}
+
+:root {
+  --duration: 0.25s;
+}
+:root.slow {
+  --duration: 2s;
+}
+
+.list {
+  view-transition-name: list;
+  width: 200px;
+  height: 300px;
+  border: 2px solid black;
+  border-radius: 20px;
+  overflow: auto;
+  text-align: center;
+}
+.item {
+  view-transition-name: match-element;
+  view-transition-class: item;
+  border: 1px solid blue;
+  padding: 10px;
+  margin: 10px;
+}
+.namepart {
+  view-transition-name: match-element;
+  view-transition-class: namepart;
+}
+input[type=button] {
+  margin: 10px;
+}
+
+::view-transition-group(*.item) {
+  animation-duration: calc(var(--duration) * 4);
+}
+::view-transition-group(*.namepart) {
+  animation-duration: var(--duration);
+}
+</style>
+
+<div id=list class=list></div>
+<input id=sbf type=button value="sort by first"></input>
+<input id=sbl type=button value="sort by last"></input>
+
+<div>
+<input type=checkbox id=nested>
+<label for=nested>use nested</label>
+<input type=checkbox id=slow>
+<label for=slow>slow down</label>
+</div>
+
+<script>
+let data = [
+  {
+    first: "Aaron ",
+    last: "Aaronson",
+  },
+  {
+    first: "Hughard ",
+    last: "Jansingh",
+  },
+  {
+    first: "Stevan ",
+    last: "Tasse",
+  },
+  {
+    first: "Daniela ",
+    last: "Webb",
+  },
+  {
+    first: "Dharma ",
+    last: "Scordato",
+  },
+  {
+    first: "Oralee ",
+    last: "Eccleston",
+  },
+  {
+    first: "Mara ",
+    last: "Gibson",
+  },
+  {
+    first: "Svit ",
+    last: "Esteban",
+  },
+  {
+    first: "Searlas ",
+    last: "Strohkirch",
+  },
+  {
+    first: "Sinclair ",
+    last: "Alieyava",
+  }];
+
+
+function sortByFirst() {
+  data.sort((a, b) => {
+    if (a.first < b.first)
+      return -1;
+    if (a.first > b.first)
+      return 1;
+    return 0;
+  });
+
+  for (let i = 0; i < data.length; ++i) {
+    data[i].container.appendChild(data[i].fe);
+    data[i].container.appendChild(data[i].le);
+    data[i].comma.remove();
+
+    list.appendChild(data[i].container);
+  }
+}
+
+function sortByLast() {
+  data.sort((a, b) => {
+    if (a.last < b.last)
+      return -1;
+    if (a.last > b.last)
+      return 1;
+    return 0;
+  });
+
+  for (let i = 0; i < data.length; ++i) {
+    data[i].container.appendChild(data[i].le);
+    data[i].container.appendChild(data[i].comma);
+    data[i].container.appendChild(data[i].fe);
+
+    list.appendChild(data[i].container);
+  }
+}
+
+function init() {
+  for (let i = 0; i < data.length; ++i) {
+    data[i].container = document.createElement("div");
+    data[i].container.classList.add("item");
+    data[i].fe = document.createElement("span");
+    data[i].fe.classList.add("namepart");
+    data[i].fe.innerText = data[i].first;
+    data[i].le = document.createElement("span");
+    data[i].le.classList.add("namepart");
+    data[i].le.innerText = data[i].last;
+    data[i].comma = document.createElement("span");
+    data[i].comma.classList.add("namepart");
+    data[i].comma.innerText = ", ";
+  }
+
+  sortByFirst();
+
+  sbf.addEventListener("click", () => {
+    document.startViewTransition(sortByFirst);
+  });
+  sbl.addEventListener("click", () => {
+    document.startViewTransition(sortByLast);
+  });
+  slow.addEventListener("change", () => { document.documentElement.classList.toggle("slow") });
+  nested.addEventListener("change", () => { document.documentElement.classList.toggle("nested") });
+}
+
+
+onload = init;
+
+</script>
+
