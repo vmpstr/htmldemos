@@ -1,0 +1,178 @@
+<!doctype html>
+<style>
+
+:root {
+  --base-duration: 3s;
+}
+
+::view-transition-group(*) {
+  animation-duration: var(--base-duration);
+}
+
+::view-transition-old(*),
+::view-transition-new(*) {
+  height: 100%;
+}
+
+::view-transition-group(*.label) {
+  animation-duration: calc(var(--base-duration) / 2);
+}
+
+form {
+  margin: auto;
+  position: relative;
+  top: 200px;
+  width: 200px;
+  height: 300px;
+  background: lightblue;
+  border: 1px solid black;
+  border-radius: 20px;
+  padding: 20px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  view-transition-name: container;
+}
+.description {
+  margin-left: 25px;
+  color: grey;
+  font-size: small;
+  text-wrap: pretty;
+}
+.settings {
+  overflow: auto;
+}
+input[type=submit] {
+  background: blue;
+  color: white;
+}
+input[type=submit]:hover {
+  background: green;
+}
+input[type=submit]:active {
+  background: darkgreen;
+}
+
+#foolabel {
+  view-transition-name: vt-foo;
+}
+#barlabel {
+  view-transition-name: vt-bar;
+}
+#bazlabel {
+  view-transition-name: vt-baz;
+}
+
+label { view-transition-class: label; }
+
+.collapsedcontainer {
+  position: absolute;
+  top: 10%;
+  left: 30%;
+  contain: layout;
+  width: 70px;
+  height: 200px;
+}
+.collapsed {
+  view-transition-name: container;
+  transform-origin: top right;
+  position: absolute;
+  top: 0;
+  right: 100%;
+  transform: rotate(-90deg);
+  width: max-content;
+  background: lightgreen;
+  border: 1px solid black;
+  border-radius: 10px;
+  padding: 10px;
+
+  display: flex;
+  flex-direction: row-reverse;
+}
+.pill {
+  view-transition-class: label;
+  display: inline-block;
+  transform: rotate(90deg);
+  border: 1px solid black;
+  padding: 1px 5px;
+  margin-top: 3px;
+  margin-bottom: 3px;
+  margin-right: -8px;
+  border-radius: 5px;
+  background: lightblue;
+}
+.hidden {
+  display: none;
+}
+</style>
+
+<form id=form action="javascript:;" onsubmit="saveSettings(this)">
+  <div class=settings>
+    <div class=setting>
+      <input type=checkbox id=foo checked>
+      <label id=foolabel for=foo>Foo</label>
+      <div class=description>
+        This is a description for foo, thank you for your attention.
+      </div>
+    </div>
+    <div class=setting>
+      <input type=checkbox id=bar checked>
+      <label id=barlabel for=bar>Bar</label>
+      <div class=description>
+        This is a description for bar, thank you for your attention.
+        Maybe this is even a longer description, who knows.
+      </div>
+    </div>
+    <div class=setting>
+      <input type=checkbox id=baz checked>
+      <label id=bazlabel for=baz>Baz</label>
+      <div class=description>
+        This is a description for baz, thank you for your attention.
+        Maybe this is even a longer description, who knows. I copy
+        pasted the last one, and then added more words.
+      </div>
+    </div>
+  </div>
+  <input type=submit value="save settings"></input>
+</form>
+
+<div id=col class="collapsedcontainer hidden">
+  <div id=pillcontainer class=collapsed>
+    <div class=pill>Foo</div>
+    <div class=pill>Bar</div>
+  </div>
+</div>
+
+<script>
+function saveSettings(e) {
+  document.startViewTransition(() => {
+    pillcontainer.innerHTML = "";
+    e.querySelectorAll("input[type=checkbox]").forEach((input) => {
+      if (input.checked) {
+        const child = document.createElement("div");
+        child.classList.add("pill");
+        console.log(input);
+        child.innerText = input.parentElement.querySelector("label").innerText;
+        child.style.viewTransitionName = `vt-${input.id}`;
+        pillcontainer.appendChild(child);
+      }
+    });
+    form.classList.toggle("hidden");
+    col.classList.toggle("hidden");
+  });
+}
+
+function editSettings() {
+  document.startViewTransition(() => {
+    form.classList.toggle("hidden");
+    col.classList.toggle("hidden");
+  });
+}
+
+function init() {
+  col.addEventListener("click", editSettings);
+}
+
+onload = init;
+</script>
