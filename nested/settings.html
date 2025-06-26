@@ -8,9 +8,18 @@
 ::view-transition-group(*) {
   animation-duration: var(--base-duration);
 }
+::view-transition-group-children(*) {
+  overflow: clip;
+}
 
 ::view-transition-old(*),
 ::view-transition-new(*) {
+  height: 100%;
+  animation-duration: calc(var(--base-duration) / 3);
+}
+.out::view-transition-old(*),
+.out::view-transition-new(*) {
+  animation-delay: calc(var(--base-duration) / 2);
   height: 100%;
 }
 
@@ -25,7 +34,7 @@ form {
   width: 200px;
   height: 300px;
   background: lightblue;
-  border: 1px solid black;
+  xborder: 1px solid black;
   border-radius: 20px;
   padding: 20px;
 
@@ -65,7 +74,10 @@ input[type=submit]:active {
   view-transition-name: vt-baz;
 }
 
-label { view-transition-class: label; }
+label {
+  view-transition-class: label;
+  padding: 1px 5px;
+}
 
 .collapsedcontainer {
   position: absolute;
@@ -85,7 +97,7 @@ label { view-transition-class: label; }
   transform: rotate(-90deg);
   width: max-content;
   background: lightgreen;
-  border: 1px solid black;
+  xborder: 1px solid black;
   border-radius: 10px;
   padding: 10px;
 
@@ -149,6 +161,7 @@ label { view-transition-class: label; }
 <script>
 function saveSettings(e) {
   document.startViewTransition(() => {
+    document.documentElement.classList.remove("out");
     pillcontainer.innerHTML = "";
     e.querySelectorAll("input[type=checkbox]").forEach((input) => {
       if (input.checked) {
@@ -167,6 +180,7 @@ function saveSettings(e) {
 
 function editSettings() {
   document.startViewTransition(() => {
+    document.documentElement.classList.add("out");
     form.classList.toggle("hidden");
     col.classList.toggle("hidden");
   });
