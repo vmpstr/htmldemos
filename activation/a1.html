@@ -2,6 +2,12 @@
 
 <input id=input type=text></input>
 
+<input id=focuse type=button value="focus"></input>
+
 <script>
-onload = () => input.focus();
+function focus() { input.focus(); }
+onload = () => {
+  focus();
+  focuse.addEventListener("click", focus);
+};
 </script>
