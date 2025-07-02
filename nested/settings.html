@@ -10,6 +10,7 @@
 }
 ::view-transition-group-children(*) {
   overflow: clip;
+  xxborder-radius: 15px;
 }
 
 ::view-transition-old(*),
@@ -35,7 +36,7 @@ form {
   height: 300px;
   background: lightblue;
   xborder: 1px solid black;
-  border-radius: 20px;
+  xxborder-radius: 15px;
   padding: 20px;
 
   display: flex;
@@ -43,6 +44,10 @@ form {
   justify-content: space-between;
   view-transition-name: container;
   view-transition-group: contain;
+
+}
+form.shadow {
+  box-shadow: 5px 5px 10px black;
 }
 .description {
   margin-left: 25px;
@@ -87,6 +92,9 @@ label {
   width: 70px;
   height: 200px;
 }
+.collapsed.shadow {
+  box-shadow: -5px 5px 10px black;
+}
 .collapsed {
   view-transition-name: container;
   view-transition-group: contain;
@@ -98,7 +106,7 @@ label {
   width: max-content;
   background: lightgreen;
   xborder: 1px solid black;
-  border-radius: 10px;
+  xxborder-radius: 15px;
   padding: 10px;
 
   display: flex;
@@ -119,9 +127,34 @@ label {
 .hidden {
   display: none;
 }
+
+@keyframes expand-anim {
+  from {
+    box-shadow: -5px 5px 10px black;
+  }
+  to {
+    box-shadow: 5px 5px 10px black;
+  }
+}
+@keyframes collapse-anim {
+  from {
+    box-shadow: 5px 5px 10px black;
+  }
+  to {
+    box-shadow: -5px 5px 10px black;
+  }
+}
+.expanding::view-transition-group-children(container) {
+  animation: expand-anim var(--base-duration);
+  animation-fill-mode: both;
+}
+.collapsing::view-transition-group-children(container) {
+  animation: collapse-anim var(--base-duration);
+  animation-fill-mode: both;
+}
 </style>
 
-<form id=form action="javascript:;" onsubmit="saveSettings(this)">
+<form id=form class=shadow action="javascript:;" onsubmit="saveSettings(this)">
   <div class=settings>
     <div class=setting>
       <input type=checkbox id=foo checked>
@@ -152,7 +185,7 @@ label {
 </form>
 
 <div id=col class="collapsedcontainer hidden">
-  <div id=pillcontainer class=collapsed>
+  <div id=pillcontainer class="collapsed shadow">
     <div class=pill>Foo</div>
     <div class=pill>Bar</div>
   </div>
@@ -160,6 +193,9 @@ label {
 
 <script>
 function saveSettings(e) {
+  form.classList.toggle("shadow");
+  pillcontainer.classList.toggle("shadow");
+  document.documentElement.classList.add("collapsing");
   document.startViewTransition(() => {
     document.documentElement.classList.remove("out");
     pillcontainer.innerHTML = "";
@@ -167,7 +203,6 @@ function saveSettings(e) {
       if (input.checked) {
         const child = document.createElement("div");
         child.classList.add("pill");
-        console.log(input);
         child.innerText = input.parentElement.querySelector("label").innerText;
         child.style.viewTransitionName = `vt-${input.id}`;
         pillcontainer.appendChild(child);
@@ -175,14 +210,37 @@ function saveSettings(e) {
     });
     form.classList.toggle("hidden");
     col.classList.toggle("hidden");
+  }).ready.then(() => {
+    document.getAnimations().forEach(a => {
+      if (a.animationName == "collapse-anim") {
+        a.finished.then(() => {
+          form.classList.toggle("shadow");
+          pillcontainer.classList.toggle("shadow");
+          document.documentElement.classList.remove("collapsing");
+        });
+      }
+    });
   });
 }
 
 function editSettings() {
+  form.classList.toggle("shadow");
+  pillcontainer.classList.toggle("shadow");
+  document.documentElement.classList.add("expanding");
   document.startViewTransition(() => {
     document.documentElement.classList.add("out");
     form.classList.toggle("hidden");
     col.classList.toggle("hidden");
+  }).ready.then(() => {
+    document.getAnimations().forEach(a => {
+      if (a.animationName == "expand-anim") {
+        a.finished.then(() => {
+          form.classList.toggle("shadow");
+          pillcontainer.classList.toggle("shadow");
+          document.documentElement.classList.remove("expanding");
+        });
+      }
+    });
   });
 }
 
