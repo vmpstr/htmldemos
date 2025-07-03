@@ -1,160 +1,282 @@
 <!doctype html>
 <style>
 
-:root {
-  --base-duration: 1s;
+@layer nested {
+  ::view-transition-group-children(*) {
+    overflow: clip;
+  }
+  .nested form {
+    view-transition-group: contain;
+  }
+  .nested .collapsed {
+    view-transition-group: contain;
+  }
 }
 
-::view-transition-group(*) {
-  animation-duration: var(--base-duration);
-}
-::view-transition-group-children(*) {
-  overflow: clip;
-  xxborder-radius: 15px;
+@layer custom-vt {
+  :root {
+    --base-duration: 1s;
+    view-transition-name: none;
+  }
+
+  .slow {
+    --base-duration: 5s;
+  }
+  ::view-transition-group(*) {
+    animation-duration: var(--base-duration);
+  }
+  ::view-transition-group(*.label) {
+    animation-duration: calc(var(--base-duration) / 4);
+  }
+
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    height: 100%;
+    animation-duration: calc(var(--base-duration) / 3);
+  }
+  .out::view-transition-old(*),
+  .out::view-transition-new(*) {
+    animation-delay: calc(var(--base-duration) / 2);
+    height: 100%;
+  }
+
+  @keyframes shadow-expand-anim {
+    from {
+      box-shadow: -5px 5px 10px black;
+    }
+    to {
+      box-shadow: 5px 5px 10px black;
+    }
+  }
+  @keyframes shadow-collapse-anim {
+    from {
+      box-shadow: 5px 5px 10px black;
+    }
+    to {
+      box-shadow: -5px 5px 10px black;
+    }
+  }
+  @keyframes radius-expand-anim {
+    from {
+      border-radius: 10px;
+    }
+    to {
+      border-radius: 20px;
+    }
+  }
+  @keyframes radius-collapse-anim {
+    from {
+      border-radius: 20px;
+    }
+    to {
+      border-radius: 10px;
+    }
+  }
+
+  .wshadow.expanding::view-transition-group(container) {
+    animation: -ua-view-transition-group-anim-container var(--base-duration),
+               shadow-expand-anim var(--base-duration);
+    animation-fill-mode: both;
+  }
+  .wshadow.collapsing::view-transition-group(container) {
+    animation: -ua-view-transition-group-anim-container var(--base-duration),
+               shadow-collapse-anim var(--base-duration);
+    animation-fill-mode: both;
+  }
+  .wradius.expanding::view-transition-group(container) {
+    animation: -ua-view-transition-group-anim-container var(--base-duration),
+               radius-expand-anim var(--base-duration);
+    animation-fill-mode: both;
+  }
+  .wradius.collapsing::view-transition-group(container) {
+    animation: -ua-view-transition-group-anim-container var(--base-duration),
+               radius-collapse-anim var(--base-duration);
+    animation-fill-mode: both;
+  }
+  .wshadow.wradius.expanding::view-transition-group(container) {
+    animation: -ua-view-transition-group-anim-container var(--base-duration),
+               shadow-expand-anim var(--base-duration),
+               radius-expand-anim var(--base-duration);
+    animation-fill-mode: both;
+  }
+  .wshadow.wradius.collapsing::view-transition-group(container) {
+    animation: -ua-view-transition-group-anim-container var(--base-duration),
+               shadow-collapse-anim var(--base-duration),
+               radius-collapse-anim var(--base-duration);
+    animation-fill-mode: both;
+  }
+  .wopacity::view-transition-group(container) {
+    opacity: 0.5;
+  }
+  .wblur::view-transition-group(container) {
+    filter: blur(3px);
+  }
+  .wradius::view-transition-group(container) {
+    border-radius: 10px;
+    overflow: clip;
+  }
 }
 
-::view-transition-old(*),
-::view-transition-new(*) {
-  height: 100%;
-  animation-duration: calc(var(--base-duration) / 3);
-}
-.out::view-transition-old(*),
-.out::view-transition-new(*) {
-  animation-delay: calc(var(--base-duration) / 2);
-  height: 100%;
-}
-
-::view-transition-group(*.label) {
-  animation-duration: calc(var(--base-duration) / 4);
-}
-
-form {
-  margin: auto;
-  position: relative;
-  top: 200px;
-  width: 200px;
-  height: 300px;
-  background: lightblue;
-  xborder: 1px solid black;
-  xxborder-radius: 15px;
-  padding: 20px;
-
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  view-transition-name: container;
-  view-transition-group: contain;
-
-}
-form.shadow {
-  box-shadow: 5px 5px 10px black;
-}
-.description {
-  margin-left: 25px;
-  color: grey;
-  font-size: small;
-  text-wrap: pretty;
-}
-.settings {
-  overflow: auto;
-}
-input[type=submit] {
-  background: blue;
-  color: white;
-}
-input[type=submit]:hover {
-  background: green;
-}
-input[type=submit]:active {
-  background: darkgreen;
-}
-
-#foolabel {
-  view-transition-name: vt-foo;
-}
-#barlabel {
-  view-transition-name: vt-bar;
-}
-#bazlabel {
-  view-transition-name: vt-baz;
-}
-
-label {
-  view-transition-class: label;
-  padding: 1px 5px;
-}
-
-.collapsedcontainer {
-  position: absolute;
-  top: 10%;
-  left: 30%;
-  contain: layout;
-  width: 70px;
-  height: 200px;
-}
-.collapsed.shadow {
-  box-shadow: -5px 5px 10px black;
-}
-.collapsed {
-  view-transition-name: container;
-  view-transition-group: contain;
-  transform-origin: top right;
-  position: absolute;
-  top: 0;
-  right: 100%;
-  transform: rotate(-90deg);
-  width: max-content;
-  background: lightgreen;
-  xborder: 1px solid black;
-  xxborder-radius: 15px;
-  padding: 10px;
-
-  display: flex;
-  flex-direction: row-reverse;
-}
-.pill {
-  view-transition-class: label;
-  display: inline-block;
-  transform: rotate(90deg);
-  border: 1px solid black;
-  padding: 1px 5px;
-  margin-top: 3px;
-  margin-bottom: 3px;
-  margin-right: -8px;
-  border-radius: 5px;
-  background: lightblue;
-}
-.hidden {
-  display: none;
-}
-
-@keyframes expand-anim {
-  from {
+@layer toggles {
+  .wshadow #pillwrap.shadow {
     box-shadow: -5px 5px 10px black;
   }
-  to {
+  .wopacity #pillwrap.shadow {
+    opacity: 0.5;
+  }
+  .wblur #pillwrap.shadow {
+    filter: blur(3px);
+  }
+  .wradius #pillwrap.shadow {
+    border-radius: 10px;
+    overflow: clip;
+  }
+
+  .wshadow #formwrap.shadow {
     box-shadow: 5px 5px 10px black;
   }
-}
-@keyframes collapse-anim {
-  from {
-    box-shadow: 5px 5px 10px black;
+  .wopacity #formwrap.shadow {
+    opacity: 0.5;
   }
-  to {
-    box-shadow: -5px 5px 10px black;
+  .wblur #formwrap.shadow {
+    filter: blur(3px);
+  }
+  .wradius #formwrap.shadow {
+    border-radius: 20px;
+    overflow: clip;
   }
 }
-.expanding::view-transition-group-children(container) {
-  animation: expand-anim var(--base-duration);
-  animation-fill-mode: both;
-}
-.collapsing::view-transition-group-children(container) {
-  animation: collapse-anim var(--base-duration);
-  animation-fill-mode: both;
+
+@layer base {
+  form {
+    padding: 20px;
+    position: absolute;
+    inset: 0;
+    background: lightblue;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    view-transition-name: container;
+
+  }
+  #formwrap {
+    margin: auto;
+    position: relative;
+    top: 150px;
+    width: 240px;
+    height: 340px;
+  }
+  .description {
+    margin-left: 25px;
+    color: grey;
+    font-size: small;
+    text-wrap: pretty;
+  }
+  .settings {
+    overflow: auto;
+  }
+  input[type=submit] {
+    background: blue;
+    color: white;
+  }
+  input[type=submit]:hover {
+    background: green;
+  }
+  input[type=submit]:active {
+    background: darkgreen;
+  }
+
+  #foolabel {
+    view-transition-name: vt-foo;
+  }
+  #barlabel {
+    view-transition-name: vt-bar;
+  }
+  #bazlabel {
+    view-transition-name: vt-baz;
+  }
+
+  label {
+    view-transition-class: label;
+    padding: 1px 5px;
+  }
+
+  .collapsedcontainer {
+    position: absolute;
+    top: 10%;
+    left: 30%;
+    contain: layout;
+    width: 70px;
+    height: 200px;
+  }
+  #pillwrap {
+    transform-origin: top right;
+    position: absolute;
+    top: 0;
+    right: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .collapsed {
+    view-transition-name: container;
+    width: max-content;
+    background: lightgreen;
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row-reverse;
+  }
+  .pill {
+    pointer-events: none;
+    view-transition-class: label;
+    display: inline-block;
+    transform: rotate(90deg);
+    border: 1px solid black;
+    padding: 1px 5px;
+    margin-top: 3px;
+    margin-bottom: 3px;
+    margin-right: -8px;
+    border-radius: 5px;
+    background: lightblue;
+  }
+  .hidden {
+    display: none;
+  }
 }
 </style>
 
-<form id=form class=shadow action="javascript:;" onsubmit="saveSettings(this)">
+<html class="nested">
+
+<div class=inputs>
+  <div>
+    <input type=checkbox id=cnested checked>
+    <label for=cnested>nested</label>
+  </div>
+  <div>
+    <input type=checkbox id=cslow>
+    <label for=cslow>slow animation</label>
+  </div>
+  <div>
+    <input type=checkbox id=cshadow>
+    <label for=cshadow>add box-shadow</label>
+  </div>
+  <div>
+    <input type=checkbox id=copacity>
+    <label for=copacity>add opacity</label>
+  </div>
+  <div>
+    <input type=checkbox id=cblur>
+    <label for=cblur>add blur</label>
+  </div>
+  <div>
+    <input type=checkbox id=cradius>
+    <label for=cradius>add border-radius</label>
+  </div>
+</div>
+
+<div id=formwrap class=shadow>
+<form id=form action="javascript:;" onsubmit="saveSettings(this)">
   <div class=settings>
     <div class=setting>
       <input type=checkbox id=foo checked>
@@ -183,20 +305,22 @@ label {
   </div>
   <input type=submit value="save settings"></input>
 </form>
+</div>
 
 <div id=col class="collapsedcontainer hidden">
-  <div id=pillcontainer class="collapsed shadow">
-    <div class=pill>Foo</div>
-    <div class=pill>Bar</div>
+  <div id=pillwrap>
+    <div id=pillcontainer class="collapsed">
+      <div class=pill>Foo</div>
+      <div class=pill>Bar</div>
+    </div>
   </div>
 </div>
 
 <script>
 function saveSettings(e) {
-  form.classList.toggle("shadow");
-  pillcontainer.classList.toggle("shadow");
   document.documentElement.classList.add("collapsing");
   document.startViewTransition(() => {
+    formwrap.classList.remove("shadow");
     document.documentElement.classList.remove("out");
     pillcontainer.innerHTML = "";
     e.querySelectorAll("input[type=checkbox]").forEach((input) => {
@@ -212,10 +336,9 @@ function saveSettings(e) {
     col.classList.toggle("hidden");
   }).ready.then(() => {
     document.getAnimations().forEach(a => {
-      if (a.animationName == "collapse-anim") {
+      if (a.animationName == "-ua-view-transition-group-anim-container") {
         a.finished.then(() => {
-          form.classList.toggle("shadow");
-          pillcontainer.classList.toggle("shadow");
+          pillwrap.classList.add("shadow");
           document.documentElement.classList.remove("collapsing");
         });
       }
@@ -224,19 +347,17 @@ function saveSettings(e) {
 }
 
 function editSettings() {
-  form.classList.toggle("shadow");
-  pillcontainer.classList.toggle("shadow");
   document.documentElement.classList.add("expanding");
   document.startViewTransition(() => {
+    pillwrap.classList.remove("shadow");
     document.documentElement.classList.add("out");
     form.classList.toggle("hidden");
     col.classList.toggle("hidden");
   }).ready.then(() => {
     document.getAnimations().forEach(a => {
-      if (a.animationName == "expand-anim") {
+      if (a.animationName == "-ua-view-transition-group-anim-container") {
         a.finished.then(() => {
-          form.classList.toggle("shadow");
-          pillcontainer.classList.toggle("shadow");
+          formwrap.classList.add("shadow");
           document.documentElement.classList.remove("expanding");
         });
       }
@@ -246,7 +367,32 @@ function editSettings() {
 
 function init() {
   col.addEventListener("click", editSettings);
+  cnested.addEventListener("change", () => {
+    cnested.checked && document.documentElement.classList.add("nested");
+    cnested.checked || document.documentElement.classList.remove("nested");
+  });
+  cslow.addEventListener("change", () => {
+    cslow.checked && document.documentElement.classList.add("slow");
+    cslow.checked || document.documentElement.classList.remove("slow");
+  });
+  cshadow.addEventListener("change", () => {
+    cshadow.checked && document.documentElement.classList.add("wshadow");
+    cshadow.checked || document.documentElement.classList.remove("wshadow");
+  });
+  copacity.addEventListener("change", () => {
+    copacity.checked && document.documentElement.classList.add("wopacity");
+    copacity.checked || document.documentElement.classList.remove("wopacity");
+  });
+  cblur.addEventListener("change", () => {
+    cblur.checked && document.documentElement.classList.add("wblur");
+    cblur.checked || document.documentElement.classList.remove("wblur");
+  });
+  cradius.addEventListener("change", () => {
+    cradius.checked && document.documentElement.classList.add("wradius");
+    cradius.checked || document.documentElement.classList.remove("wradius");
+  });
 }
 
 onload = init;
 </script>
+</html>
