@@ -1,0 +1,101 @@
+<!doctype html>
+
+<style>
+.container {
+  display: inline-block;
+  position: relative;
+  width: 100px;
+  height: 200px;
+}
+.container.shadow {
+  box-shadow: 5px 5px 10px black;
+}
+.to {
+  left: 50px;
+}
+#target {
+  view-transition-name: target;
+  position: absolute;
+  inset: 0;
+  background: lightblue;
+}
+.inputs {
+  position: relative;
+  top: 50px;
+}
+
+:root { view-transition-name: none }
+::view-transition-group(*) {
+  box-shadow: 5px 5px 10px black;
+}
+</style>
+
+<div id=dfrom class="container from shadow">
+  <div id=target></div>
+</div>
+<div id=dto class="container to">
+</div>
+
+<div class=inputs>
+<input id=btoggle type=button value=toggle>
+<input id=cworkaround type=checkbox>
+<label for=cworkaround>workaround</label>
+</div>
+
+<script>
+let from = 1;
+
+const toggle = () => {
+  if (cworkaround.checked) {
+    workaroundToggle();
+  } else {
+    naiveToggle();
+  }
+}
+
+const naiveToggle = () => {
+  document.startViewTransition(() => {
+    if (from) {
+      dfrom.classList.remove("shadow");
+      dto.appendChild(target);
+    } else {
+      dto.classList.remove("shadow");
+      dfrom.appendChild(target);
+    }
+  }).finished.then(() =>{ 
+    if (from) {
+      dto.classList.add("shadow");
+    } else {
+      dfrom.classList.add("shadow");
+    }
+    from = 1 - from;
+  });
+}
+
+const workaroundToggle = () => {
+  document.startViewTransition(() => {
+    if (from) {
+      dfrom.classList.remove("shadow");
+      dto.appendChild(target);
+    } else {
+      dto.classList.remove("shadow");
+      dfrom.appendChild(target);
+    }
+  }).ready.then(() =>{ 
+    document.getAnimations()[0].finished.then(() => { 
+      if (from) {
+        dto.classList.add("shadow");
+      } else {
+        dfrom.classList.add("shadow");
+      }
+      from = 1 - from;
+    });
+  });
+}
+
+const init = () => {
+  btoggle.addEventListener("click", toggle);
+}
+
+onload = init;
+</script>
