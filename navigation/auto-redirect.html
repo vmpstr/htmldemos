@@ -1,0 +1,8 @@
+<p>Testing redirection from the top-frame after a navigation.</p>
+<p>Don't interact with this page!</p>
+<p>This page should be loaded from <a href="https://mustaqahmed.github.io/web/crbug/redirection.html">this page</a>, it will then (try to) redirect in a three seconds.</p>
+<p>The redirection should work, right?</p>
+<script>
+  "use strict";
+  setTimeout(() => window.open("https://www.example.org", "_top"), 3000);
+</script>
