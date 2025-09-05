@@ -61,17 +61,23 @@ Here, _e_ is attached to the `inline-start` edge of _target_. This means that it
 is off to the `inline-start` direction, located across the edge from the content
 of _target_:
 
-<img src="resources/inline-start-attachment.png" style="height: 400px; display: block; margin: auto">
+<div style="width: min-content; margin: auto">
+    <img src="resources/inline-start-attachment.png" style="height: 400px">
+</div>
 
 Now, if we are at the end of the `inline` scroll in the direction in which _e_
 is attached, we allow to overscroll in that direction revealing _e_. For
 example, let's start with the following set up:
 
-<img src="resources/e-and-target-content.png" style="height: 400px; display: block; margin: auto">
+<div style="width: min-content; margin: auto">
+    <img src="resources/e-and-target-content.png" style="height: 400px">
+</div>
 
 Then we can do a swipe to reveal _e_:
 
-<img src="resources/e-pushes-content.png" style="height: 400px; display: block; margin: auto">
+<div style="width: min-content; margin: auto">
+    <img src="resources/e-pushes-content.png" style="height: 400px">
+</div>
 
 Internally, this is accomplished by placing the contents of _target_ and _e_
 within an unexposed scroller, so all of the scrolling physics apply.
@@ -87,7 +93,9 @@ We can also allow _e_ to overlay _target_'s content for a different effect:
 }
 ```
 
-<img src="resources/e-overlays-content.png" style="height: 400px; display: block; margin: auto">
+<div style="width: min-content; margin: auto">
+    <img src="resources/e-overlays-content.png" style="height: 400px">
+</div>
 
 ### Events
 
@@ -143,17 +151,23 @@ edge or to continue moving until the larger element is fully visible.
 
 For example, consider the following situation:
 
-<img src="resources/two-attachments.png" style="height: 400px; display: block; margin: auto">
+<div style="width: min-content; margin: auto">
+    <img src="resources/two-attachments.png" style="height: 400px">
+</div>
 
 Now consider what happens when we complete the gesture.
 
 Option 1: everything moves in sync as far as the widest element:
 
-<img src="resources/two-attachments-together.png" style="height: 400px; display: block; margin: auto">
+<div style="width: min-content; margin: auto">
+    <img src="resources/two-attachments-together.png" style="height: 400px">
+</div>
 
 Option 2: the smaller element sticks to the edge when it would scroll too far:
 
-<img src="resources/two-attachments-sticky.png" style="height: 400px; display: block; margin: auto">
+<div style="width: min-content; margin: auto">
+    <img src="resources/two-attachments-sticky.png" style="height: 400px">
+</div>
 
 #### Accessibility
 
