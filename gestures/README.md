@@ -44,12 +44,12 @@ attachment:
 
 ```css
 .target {
-  overscroll-anchor: --target;
+  overscroll-anchor-name: --target;
 }
 ```
 
 Now, we can attach other elements such as _e_ to this target by referring to its
-`overscroll-anchor` name:
+`overscroll-anchor-name`:
 
 ```css
 .e {
