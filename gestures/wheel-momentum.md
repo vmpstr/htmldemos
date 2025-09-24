@@ -44,3 +44,8 @@ property to indicate when the generated event is a result of momentum.
 
 Windows seems to provide a similar event
 [ManipulationInertiaStarting](https://learn.microsoft.com/en-us/uwp/api/windows.ui.xaml.uielement.manipulationinertiastarting).
+
+#### Linux
+
+Gtk has an [is_stop](https://docs.gtk.org/gdk4/method.ScrollEvent.is_stop.html)
+field on the GdkEvent that is true when the kinetic scrolling phase is started.
