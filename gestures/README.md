@@ -34,75 +34,112 @@ sidebar menus and pull-to-refresh UI.
 
 **_Note: this is an early proposal and subject to substantial changes._**
 
-### Overscroll anchor
+### Overscroll areas
 
-The idea is to think about the element _e_ as being attached to the overscroll
-region of another element _target_.
+The idea is that each element may have one or more _overscroll_ areas which can
+house elements and have their own overflow areas in addition to the element's
+regular overflow.
 
-First step is to declare a name for _target_, which makes it a valid target for
-attachment:
+Let's considering the following HTML snippet:
+
+```html
+<div class=container>
+  ...
+  <div class=e>...</div>
+  ...
+</div>
+```
+
+First step is to declare overscroll areas on the element:
 
 ```css
-.target {
-  overscroll-anchor-name: --target;
+.container {
+  overscroll-area: --foo;
 }
 ```
 
-Now, we can attach other elements such as _e_ to this target by referring to its
-`overscroll-anchor-name`:
-
-```css
-.e {
-  position: overscroll-anchor(--target, inline-start);
-}
-```
-
-Here, _e_ is attached to the `inline-start` edge of _target_. This means that it
-is off to the `inline-start` direction, located across the edge from the content
-of _target_:
-
-<p align="center">
-  <img src="resources/inline-start-attachment.png" style="height: 400px">
-</p>
-
-Now, if we are at the end of the `inline` scroll in the direction in which _e_
-is attached, we allow to overscroll in that direction revealing _e_. For
-example, let's start with the following set up:
-
-<p align="center">
-  <img src="resources/e-and-target-content.png" style="height: 400px">
-</p>
-
-Then we can do a swipe to reveal _e_:
-
-<p align="center">
-  <img src="resources/e-pushes-content.png" style="height: 400px">
-</p>
-
-Internally, this is accomplished by placing the contents of _target_ and _e_
-within an unexposed scroller, so all of the scrolling physics apply.
-
-Note that we also add sufficient scroll snap point information so that the
-scroller has two stable states: either _e_ is fully visible or fully hidden.
-
-We can also allow _e_ to overlay _target_'s content for a different effect:
+Now, we can add elements into this overflow by declaring which overscroll areas
+they would like to reside in.
 
 ```css
 .e {
-  position: overscroll-anchor(--target, inline-start overlay);
+  overscroll-position: --foo;
 }
 ```
 
+Now _e_ is in the overscroll area of _container_.
+
+### What does this mean?
+
+When this is configured, we can use _internal_ (non-developer exposed) pseudo
+elements to construct the following box structure:
+
 <p align="center">
-  <img src="resources/e-overlays-content.png" style="height: 400px">
+  <img src="resources/box_structure.png">
 </p>
+
+Here, .container has one child: overscroll-area-parent(--foo), which contains
+::overscroll-client-area and the children that are located in this overscroll
+area. The client area, in turn, contains the children that are not in the
+overflow area (ie regular "main" overflow children).
+
+This structure provides some natural behaviors:
+* Hit testing will begin from the element's box decorations object. Then it will
+  recurse into ::overscroll-area-parent, and then try to hit test the overscroll
+  elements first that are visually on top.. If it doesn't find a target, it will
+  recurse into ::overscroll-client-area and ultimately down to the main overflow
+  area of the scroller.
+* Scroll chaining will start from the inner most element (for example). When
+  that scrolling content is at the end, it will naturally chain from
+  ::overscroll-client-area to ::overscroll-area-parent allowing overscroll. Then it
+  will continue chaining past .container (since it has effective overscroll:
+  clip) and up the regular scrolling chain.
+
+This means that when we scroll, we first scroll the main scrollable area, but
+when we reach the end. We can start a new scroll in the same direction and if
+there's an element in that direction, we would scroll that into view.
+
+<p align="center">
+  <img src="resources/overscroll.gif">
+</p>
+
+([simple polyfill on codepen](https://codepen.io/Vladimir-Levin-the-flexboxer/pen/wBMavyM))
+
+Note for completeness, `overscroll-area` should be able to take a list of dashed
+idents to support multiple areas.
+
+```css
+.container {
+    overscroll-area: --foo, --bar
+}
+```
+
+The above would generate the following structure:
+
+<p align="center">
+  <img src="resources/box_structure_nested.png">
+</p>
+
+### Overlay
+
+Note that would also support `overlay` mode where the overscrolling content does
+not move the main overscroll area. This would be accomplished similar to
+position sticky on the main overscroll area.
+
+```css
+.container {
+    overscroll-area: --foo overlay;
+}
+```
+
+_TODO: Add examples_
 
 ### Events
 
 In order to allow developers to react to these changes several events can be
 added as well.
 
-`overscrollgesturestart`: emitted when an overscroll gesture is started on _target_
+`overscrollgesturestart`: emitted when an overscroll gesture is started on _container_
 in a direction that would reveal one or more of its attached elements (e.g.
 _e_).
 
@@ -123,51 +160,9 @@ the title prefix "Gestures: "_
 
 #### Position side-effects
 
-Since we use the `position` property, we need to figure out how the attached
-element _e_ is laid out.
-
-A natural proposal is to treat the attached location as the "natural layout
-position" of _e_, and otherwise treat the position as `absolute`.
-
-Alternatively, a more expressive syntax can be developed such as the following:
-
-```css
-position: absloute overscroll-anchor(--target, inline-start)
-```
-
-or
-
-```css
-position: fixed overscroll-anchor(--target, block-end)
-```
-
-#### Multiple attachments
-
-If multiple elements are attached to the same edge, there is an open question to
-how far the gesture extends and what is the effect.
-
-The two competing options is to treat the smaller element as sticking to the
-edge or to continue moving until the larger element is fully visible.
-
-For example, consider the following situation:
-
-<p align="center">
-  <img src="resources/two-attachments.png" style="height: 400px">
-</p>
-
-Now consider what happens when we complete the gesture.
-
-Option 1: everything moves in sync as far as the widest element:
-
-<p align="center">
-  <img src="resources/two-attachments-together.png" style="height: 400px">
-</p>
-
-Option 2: the smaller element sticks to the edge when it would scroll too far:
-
-<p align="center">
-  <img src="resources/two-attachments-sticky.png" style="height: 400px">
-</p>
+`overscroll-position` could be a new `position` value, since we would want this
+element to be out of flow positioned always, so it doesn't make sense to support
+in-flow `position` values if we have `overscroll-position`.
 
 #### Accessibility
 
@@ -175,14 +170,8 @@ Since this ultimately hides the element until a overscroll swipe reveals it,
 default accessibility treatment is important to ensure that assistive technology
 users can access the content without the need to swipe.
 
-One of the possible approach is to allow the _edge_ which is a target of
-attachment to become focusable. This can be done by introducing a new
-pseudo-element such as `::overscroll-edge(inline-start)` which can be focused
-and activated. By activating this edge, it would cause the same effect as
-swiping the content into view. 
-
-Another non-competing possibility is to allow keyboard scrolling to reveal
-overscroll after say two scrolls in the direction that has attached content.
+We likely want to support keyboard and other methods of scrolling which would
+allow accessing these areas.
 
 ## TODOs
 
