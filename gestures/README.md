@@ -26,6 +26,18 @@ requires insight and an in-depth understanding of these features behave.
 
 [Example of Scroll Driven Animation enabled sidebar menu](https://flackr.github.io/web-demos/css-scroll-snap/menu/index.html#content)
 
+## Goals
+
+This proposal explores defining semantic relationships between an element and
+its overscroll area. It proposes several approaches that can be used to show
+overscroll content of one element and interact with it.
+
+## Non-Goals
+
+This proposal does *not* introduce any general purpose gesture recognition APIs.
+It instead focuses on scrolling as a fundamental existing behavior and extends
+it to overscroll areas.
+
 ## Proposal
 
 We propose adding a set of new simple-to-use primitives that enable rich
@@ -33,6 +45,10 @@ interactive patterns that involve moving content around, such as the case with
 sidebar menus and pull-to-refresh UI.
 
 **_Note: this is an early proposal and subject to substantial changes._**
+
+**_Note: There are two variants in this proposal: CSS and HTML changes. They are
+meant to work separately from each other (i.e. we would introduce one but not
+both approaches, unless necessary)._**
 
 ### Overscroll areas
 
@@ -69,6 +85,19 @@ they would like to reside in.
 
 Now _e_ is in the overscroll area of _container_.
 
+An alternative to specifying this is to establish the overscroll relationship
+using HTML attributes:
+
+```html
+<div id=container overscroll-container>
+  ...
+  <div class=e overscroll-for="container">...</div>
+</div>
+```
+
+This would establish the same relationship as with the CSS properties, but in
+HTML.
+
 ### What does this mean?
 
 When this is configured, we can use _internal_ (non-developer exposed) pseudo
@@ -103,6 +132,9 @@ there's an element in that direction, we would scroll that into view.
   <img src="resources/overscroll.gif">
 </p>
 
+**_Note: The structure would be similar whether the relationship is established
+with CSS properties or HTML attributes_**
+
 ([simple polyfill on codepen](https://codepen.io/Vladimir-Levin-the-flexboxer/pen/wBMavyM))
 
 Note for completeness, `overscroll-area` should be able to take a list of dashed
@@ -120,6 +152,11 @@ The above would generate the following structure:
   <img src="resources/box_structure_nested.png">
 </p>
 
+We may also explore HTML alternatives for multiple overscroll areas using new
+properties like `overscroll-container="foo bar"` or alternatively
+`overscroll-order` on the overscrolling element to specify in what sequence to
+overscroll, otherwise unnamed, areas.
+
 ### Overlay
 
 Note that would also support `overlay` mode where the overscrolling content does
@@ -131,6 +168,10 @@ position sticky on the main overscroll area.
     overscroll-area: --foo overlay;
 }
 ```
+
+In HTML, we can add a new attributes `overscroll-behavior=overlay` to do similar
+thing. Note that we should come up with a different name not to confuse this
+attribute with `overscroll-behavior` CSS property.
 
 _TODO: Add examples_
 
@@ -172,6 +213,13 @@ users can access the content without the need to swipe.
 
 We likely want to support keyboard and other methods of scrolling which would
 allow accessing these areas.
+
+When using HTML, the semantic meaning of the relationship is established with
+HTML attributes. This could allow for bespoke annoucements. For example, if an
+element is an overscroll container that contains one or more areas, we can
+require an annoucement that the focused element has several panels and provide a
+method for accessing these panels. The panels themselves would be named and
+described by the element that resides in them.
 
 ## TODOs
 
