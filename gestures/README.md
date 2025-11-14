@@ -221,6 +221,15 @@ require an annoucement that the focused element has several panels and provide a
 method for accessing these panels. The panels themselves would be named and
 described by the element that resides in them.
 
+## Use Cases
+
+We have several examples of where this would be used
+built using regular ancestor scrolling elements in HTML for prototyping:
+
+* [Side menu](https://flackr.github.io/web-demos/css-scroll-snap/menu2/)
+* [Bottom sheet](https://flackr.github.io/web-demos/css-scroll-snap/bottom-sheet/)
+* [Swipe to dismiss](https://flackr.github.io/web-demos/css-scroll-snap/photos/index.html)
+
 ## TODOs
 
 * We need to flesh out the default accessibility treatments, as well as which
