@@ -1,205 +1,132 @@
-# Gestures as UI activation primitives
+# Explainer: Declarative Overscroll Actions
 
-## Background
+## Introduction
 
-The web platform provides a rich set of primitives for building visually
-compelling, sophisticated experiences. Frequently, the necessary primitives for
-building an experience are available but need to be composed in non-trivial ways
-to accomplish an effect. 
+The web platform allows for sophisticated scrolling experiences, but it
+currently lacks a semantic way to utilize "overscroll" space (the area beyond
+the scroll boundary).
 
-One such example is an experience of building a side menu. Although it is simple
-to construct a menu, it isn't easy to make the menu appear and hide as needed.
-This can be built using nested scrollers. Managing positioning and interactions
-with nested scrollers is complex. Additionally, it is easy to forget
-accessibility implications for users that rely on scrolling affordances other
-than touch and mouse. 
-
-Relying on scrolling also provides access to animation primitives such as a
-scroll timeline, enabling sophisticated experiences.
-
-[Example of Scroll Driven Animation enabled sidebar menu](https://flackr.github.io/web-demos/css-scroll-snap/menu/index.html#content)
-
-This document explores a proposal to make building nested scroller-like
-experiences easy, strongly encouraging accessible affordances to access the
-scrollable areas.
-
-## Terminology
-
-Scrollable area: an area that is accessible to the user using a scroll gesture.
-Typically this area also automatically scrolls content into view in responce to
-focus navigation, find-in-page, and similar features. 
-
-Scroll chaining: a notion that when an element is scrolled that does not have
-available scroll area, the scroll continues in the next ancestor scroller.
-
-Overscroll: a notion of continuing a scroll gesture in a direction where there
-is no longer scrollable content available. Typically, overscroll chains the
-scroll to the ancestor scroller.
-
-## Goals
-
-This proposal explores defining semantic relationships between an element and
-its overscroll area. Specifically, this allows an easy construction of elements
-with overscroll areas that themselves contain other content.
-
-## Non-Goals
-
-This proposal does *not* introduce any general purpose gesture recognition APIs.
-It instead focuses on scrolling as a fundamental existing behavior and extends
-it to overscroll areas.
+Common UI patterns like **side-menus** (swiping past the edge to reveal a menu)
+or **swipe-to-action** (swiping a list item to reveal delete buttons) currently
+rely on complex nested scrollers or JavaScript gesture polyfills. These
+workarounds are difficult to implement, computationally expensive, and often
+fail to provide accessible alternatives for non-touch users.
 
 ## Proposal
 
-We propose adding a set of HTML attributes that allow the author to _bind_ one
-element to another via a focusable, activatable element such as a button. When
-bound, the element's box will be positioned within the overscroll area of the
-second element. Furthermore, the activatable element, such as a button, serves
-as a way to access the overscroll area without requiring a scroll action.
+We propose a set of HTML attributes that declaratively bind an element (the
+"overscroll content") to the scroll boundary of a container.
 
-**_Note: this is an early proposal and subject to substantial changes._**
+Crucially, this binding is defined on an **activatable element** (like a
+`<button>`). This ensures that every gesture-based action has a guaranteed,
+accessible fallback interaction (click/Enter) without extra developer effort.
 
-### Overscroll area binding
+### Goals
 
-To bind an element into an overscroll area of another, we propose new attributes
-that are only valid on activatable elements such as buttons and links:
+* **Zero-JS Gestures:** Enable swipe-to-reveal and pull-to-refresh interactions
+  using only HTML and CSS.
+* **Accessibility by Default:** Enforce the existence of a semantic button to
+  toggle the view, ensuring keyboard and assistive technology support.
+* **Performance:** Offload gesture physics and animation to the browser's
+  compositor thread (via scroll timelines).
+
+## The API
+
+We introduce attributes to bind a trigger button to both the container (the
+scroll port) and the content (the element hidden in the overscroll area).
 
 ```html
 <div id="container">
-    ...
-    <button overscrollcontent="#menu" overscrollfor="#container">Menu</button>
-    ...
+    <button overscroll-target="#menu" overscroll-host="#container">
+      Open Menu
+    </button>
+
     <menu id="menu">
-      ...
+        <li>Home</li>
+        <li>Settings</li>
     </menu>
-    ...
 </div>
 ```
 
-This accomplishes a few things:
-* `#menu` becomes an absolutely positioned element, whose box is conceptually
-  placed in an overscroll area of `#container`. 
-* `#menu` can now be placed, potentially with inset properties or anchor
-  positioning, anywhere relative to the `#container`. 
-* When `#container`'s scrollable content is at the end, if that direction
-  contains (a portion) of the `#menu`, the scroll chains to this overscroll area
-  allowing the `#menu` to be brought on screen.
-* `<button>` itself when activated scrolls the `#menu` into view, similar to a
-  `scrollIntoView()` call.
+### Behavior
 
-### Events
+1.  **Positioning:** `#menu` is effectively absolutely positioned within the
+    "overscroll" area of `#container`.
+2.  **Chaining:** When a user scrolls `#container` to its limit, the scroll
+    chains to the `#menu`, pulling it onto the screen.
+3.  **Activation:** Clicking the `<button>` performs a `scrollIntoView`-like
+    action on the `#menu`.
 
-Note to further customize experiences and allow more effects, we need to expose
-events that notify script when these overscroll areas are interacted with:
-start, overscrolled, canceled, etc.
+### Overlay Mode
 
-The details of the events is not explored in this document, since it depends on
-developer need. However, below we describe an example set:
-
-`overscrollgesturestart`: emitted when an overscroll gesture is started on _container_
-in a direction that would reveal one or more of its attached elements (e.g.
-_e_).
-
-`overscrollgesturechanging`: emitted during a gesture if current progress of
-the gesture would change its state. Simipar to `scrollsnapchanging` for scroll
-snap points and is emitted as similar timing.
-
-`overscrollgestureend`: emitted when the gesture resulted in a changed state
-after all of the scrolling animations have finished.
-
-`overscrollgesturecancel`: emitted when the gesture did not result in a changed
-state after all of the scrolling animations have finished.
-
-
-### Snap points
-
-Another qualify of life improvement that we propose is setting scroll snap
-points at points that allow fully overscrolled content to be snapped, as well as
-fully not-overscrolled. 
-
-### What does this all mean?
-
-_TODO: We need to update the diagrams with the HTML proposal. Largely the pseudo
-elements would remain the same, but the naming will be unexposed tokens that
-uniquely identify area to element mapping._
-
-When this is configured, as an example, we can use _internal_ (non-developer
-exposed) pseudo elements to construct the following box structure:
-
-<p align="center">
-  <img src="resources/box_structure.png">
-</p>
-
-Here, .container has one child: overscroll-area-parent(--foo), which contains
-::overscroll-client-area and the children that are located in this overscroll
-area. The client area, in turn, contains the children that are not in the
-overflow area (ie regular "main" overflow children).
-
-This structure provides some natural behaviors:
-* Hit testing will begin from the element's box decorations object. Then it will
-  recurse into ::overscroll-area-parent, and then try to hit test the overscroll
-  elements first that are visually on top.. If it doesn't find a target, it will
-  recurse into ::overscroll-client-area and ultimately down to the main overflow
-  area of the scroller.
-* Scroll chaining will start from the inner most element (for example). When
-  that scrolling content is at the end, it will naturally chain from
-  ::overscroll-client-area to ::overscroll-area-parent allowing overscroll. Then it
-  will continue chaining past .container (since it has effective overscroll:
-  clip) and up the regular scrolling chain.
-
-This means that when we scroll, we first scroll the main scrollable area, but
-when we reach the end. We can start a new scroll in the same direction and if
-there's an element in that direction, we would scroll that into view.
-
-<p align="center">
-  <img src="resources/overscroll.gif">
-</p>
-
-([simple polyfill on codepen](https://codepen.io/Vladimir-Levin-the-flexboxer/pen/wBMavyM))
-
-### Overlay
-
-Note that would also support `overlay` mode where the overscrolling content does
-not move the main overscroll area. This would be accomplished similar to
-position sticky on the main overscroll area.
+By default, overscroll pushes the content. We also support an overlay mode
+(similar to `position: sticky`) where the overscroll content slides *over* the
+container.
 
 ```html
-<button overscrollcontent="#menu" overscrollfor="#container" overscrollmode="overlay">
+<button overscroll-target="#menu" overscroll-host="#container" overscroll-mode="overlay">
+  Open Menu
 </button>
 ```
 
-### Discussion and Open Questions
+## Events
 
-_If you have a comment or question, please file an issue in this repository with
-the title prefix "Gestures: "_
+To allow developers to hook into the lifecycle of the gesture (e.g., for refresh
+logic or haptics), we expose the following events on the host container:
 
-#### Accessibility
+| Event Name | Description |
+| :--- | :--- |
+| `overscrollgesturestart` | Fired when the scroll boundary is breached and chaining begins. |
+| `overscrollgesturechanging` | Fired when the gesture sufficiently drags overscroll to snap it to an open area (similar to `scrollsnapchanging`). |
+| `overscrollgestureend` | Fired when the gesture completes and the state has changed. |
+| `overscrollgesturecancel` | Fired when the gesture ends but snaps back to the original state. |
 
-Since this ultimately hides the element until a overscroll swipe reveals it,
-default accessibility treatment is important to ensure that assistive technology
-users can access the content without the need to swipe.
+## Implementation Model
 
-This is a fundamental reason why the binding of an element to its overscroll
-container is done via an activatable element. This strongly encourages an
-existence of an element that is capable of bringing this area into view without
-requiring scroll gestures. Note that other than providing the binding, this
-element remains a regular activatable element that can be styled and placed as
-necessary. Activating this element would scroll the overscroll area into view
-and send the appropriate events to indicate that this area was activated. This
-enables a number of patterns to be accomplished in a way that remains accessible
-to, for example, keyboard users.
+*Note: This section details the conceptual rendering tree structure.*
 
-## Alternatives explored
+When configured, the browser constructs an internal box structure to handle
+hit-testing and painting order:
 
-### CSS
+_TODO: Update gox structure diagram._
 
-We have considered making these bindings in CSS, which would allow a similar
-treatment to a set of elements leveraging the power of CSS selectors. For
-example, a swipe to dismiss list needs each list item to be configured with an
-overscroll area. This can be cumbersome in HTML.
+![Box Structure Diagram](resources/box_structure.png)
 
-However, due to semantic nature of these relationships, coupled with the fact
-that it isn't trivial to strongly encourage an element like a button, we've
-decided that this feature would be best suited for HTML.
+1.  **`.container`** creates an internal `::overscroll-area-parent`.
+2.  **`::overscroll-area-parent`** contains the overscroll elements (visually on
+    top or bottom depending on mode).
+3.  **`::overscroll-client-area`** holds the standard flow content.
 
+**Hit Testing & Chaining:**
 
+Hit testing begins at the `::overscroll-area-parent`. If no target is found in
+the overscroll content, it recurses to the client area. Conversely, scroll
+chaining bubbles up from the client area; when the client area limit is reached,
+the delta is consumed by the `::overscroll-area-parent` to reveal the hidden
+content.
+
+![Overscroll Animation](resources/overscroll.gif)
+
+([Simple polyfill on Codepen](https://codepen.io/Vladimir-Levin-the-flexboxer/pen/wBMavyM))
+
+## Accessibility Considerations
+
+This proposal solves a major accessibility hurdle in gesture UIs. By attaching
+the behavior to a `<button>`:
+
+* **Keyboard Users:** Can tab to the button and activate it to reveal the
+  menu/action.
+* **Screen Readers:** Perceive a standard button connection rather than an
+  invisible gesture zone.
+* **Discoverability:** The button provides a visible affordance for the action.
+
+## Alternatives Considered
+
+### CSS-only Properties
+
+We considered defining this relationship purely in CSS. While powerful, CSS
+lacks the semantic enforcement of an interactive element. A CSS-only solution
+runs the risk of creating "invisible" gestures that are inaccessible to users
+who cannot perform swipe actions. By requiring an HTML activator, we enforce
+progressive enhancement.
 
