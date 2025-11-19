@@ -107,7 +107,7 @@ content.
 
 ![Overscroll Animation](resources/overscroll.gif)
 
-([Simple polyfill on Codepen](https://codepen.io/Vladimir-Levin-the-flexboxer/pen/wBMavyM))
+([Simple polyfill on Codepen](https://flackr.github.io/web-demos/css-scroll-snap/menu2/))
 
 ## Accessibility Considerations
 
