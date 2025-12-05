@@ -88,20 +88,23 @@ logic or haptics), we expose the following events on the host container:
 When configured, the browser constructs an internal box structure to handle
 hit-testing and painting order:
 
-_TODO: Update gox structure diagram._
+_TODO: Update box structure diagram._
 
 ![Box Structure Diagram](resources/box_structure.png)
 
 1.  **`.container`** creates an internal `::overscroll-area-parent`.
 2.  **`::overscroll-area-parent`** contains the overscroll elements (visually on
     top or bottom depending on mode).
-3.  **`::overscroll-client-area`** holds the standard flow content.
+
+Scroll chains from `.container` to the `::overscroll-area-parent`,
+finally to `.container`'s ancestor scrolling container.
 
 **Hit Testing & Chaining:**
 
-Hit testing begins at the `::overscroll-area-parent`. If no target is found in
-the overscroll content, it recurses to the client area. Conversely, scroll
-chaining bubbles up from the client area; when the client area limit is reached,
+Hit testing first considers the `::overscroll-area-parent`.
+The pseudo-element itself is `pointer-events: none` so if no hittable target is found in
+the overscroll content, it continues to the children. Conversely, scroll
+chaining bubbles up from the children; when the `.container` limit is reached,
 the delta is consumed by the `::overscroll-area-parent` to reveal the hidden
 content.
 
