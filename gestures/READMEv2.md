@@ -98,8 +98,6 @@ logic or haptics), we expose the following events on the host container:
 When configured, the browser constructs an internal box structure to handle
 hit-testing and painting order:
 
-_TODO: Update box structure diagram._
-
 ![Box Structure Diagram](resources/box_structure.png)
 
 1.  **`.container`** creates an internal `::overscroll-area-parent`. This acts
