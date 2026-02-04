@@ -32,13 +32,19 @@ accessible fallback interaction (click/Enter) without extra developer effort.
 
 ## The API
 
-We introduce attributes to bind a trigger button to both the container (the
-scroll port) and the content (the element hidden in the overscroll area).
+There are two parts to the API:
+
+First, the container needs to be identified as supporting overscroll areas. This
+is done by specifying `overscrollcontainer` property on the container.
+
+Second, we introduce command values to bind a trigger button to both the
+container (the scroll port) and the content (the element hidden in the
+overscroll area).
 
 ```html
-<div id="container">
-    <button overscroll-target="#menu" overscroll-host="#container">
-      Open Menu
+<div id="container" overscrollcontainer>
+    <button commandfor="menu" command="toggle-overscroll">
+      Toggle Menu
     </button>
 
     <menu id="menu">
@@ -64,10 +70,14 @@ By default, overscroll pushes the content. We also support an overlay mode
 container.
 
 ```html
-<button overscroll-target="#menu" overscroll-host="#container" overscroll-mode="overlay">
-  Open Menu
-</button>
+<div id="container" overscrollcontainer="overlay">
+  ...
+</div>
 ```
+
+Note that this is a property of the overscrollcontainer for simplicity of API
+design. If use cases arise that require different overflowing elements to have
+different overlay mode, we can revisit the shape of the API.
 
 ## Events
 
@@ -76,10 +86,10 @@ logic or haptics), we expose the following events on the host container:
 
 | Event Name | Description |
 | :--- | :--- |
-| `overscrollgesturestart` | Fired when the scroll boundary is breached and chaining begins. |
-| `overscrollgesturechanging` | Fired when the gesture sufficiently drags overscroll to snap it to an open area (similar to `scrollsnapchanging`). |
-| `overscrollgestureend` | Fired when the gesture completes and the state has changed. |
-| `overscrollgesturecancel` | Fired when the gesture ends but snaps back to the original state. |
+| `overscrollstart` | Fired when the scroll boundary is breached and chaining begins. |
+| `overscrollchanging` | Fired when the gesture sufficiently drags overscroll to snap it to an open area (similar to `scrollsnapchanging`). |
+| `overscrollend` | Fired when the gesture completes and the state has changed. |
+| `overscrollcancel` | Fired when the gesture ends but snaps back to the original state. |
 
 ## Implementation Model
 
@@ -92,21 +102,12 @@ _TODO: Update box structure diagram._
 
 ![Box Structure Diagram](resources/box_structure.png)
 
-1.  **`.container`** creates an internal `::overscroll-area-parent`.
-2.  **`::overscroll-area-parent`** contains the overscroll elements (visually on
-    top or bottom depending on mode).
-
-Scroll chains from `.container` to the `::overscroll-area-parent`,
-finally to `.container`'s ancestor scrolling container.
-
-**Hit Testing & Chaining:**
-
-Hit testing first considers the `::overscroll-area-parent`.
-The pseudo-element itself is `pointer-events: none` so if no hittable target is found in
-the overscroll content, it continues to the children. Conversely, scroll
-chaining bubbles up from the children; when the `.container` limit is reached,
-the delta is consumed by the `::overscroll-area-parent` to reveal the hidden
-content.
+1.  **`.container`** creates an internal `::overscroll-area-parent`. This acts
+    as a scroll and layout _parent_ of the container
+2.  **`::overscroll-area-parent`** contains both the container and the menu
+    elements as siblings. This ensures that when the container scroll chains, it
+    chains to the overscroll-area-parent which can bring in the typically
+    offscreen menu on screen.
 
 ![Overscroll Animation](resources/overscroll.gif)
 
