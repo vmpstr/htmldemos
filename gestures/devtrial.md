@@ -48,5 +48,7 @@ issue at https://github.com/openui/open-ui/issues
 ## Links
 
 Chrome status: https://chromestatus.com/5261280285949952
+
 Explainer: https://open-ui.org/components/overscroll-actions.explainer/
+
 Demos: https://flackr.github.io/web-demos/html/overscrollcontainer/
