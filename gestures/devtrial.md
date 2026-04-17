@@ -40,7 +40,7 @@ What is missing? What do you wish you could do with this and why can you not do
 that?
 
 For bugs that appear to be implementation bugs, please file a report at
-crbug.com/new with `Overscroll Gestures` in the title of the issue.
+https://crbug.com/new with `Overscroll Gestures` in the title of the issue.
 
 For behaviors that seem to be choices that you disagree with, please file an
 issue at https://github.com/openui/open-ui/issues
