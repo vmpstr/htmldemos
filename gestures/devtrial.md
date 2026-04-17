@@ -18,7 +18,7 @@ The feature is available in Chrome version **149.0.7797.0** and above -- latest
 Chrome Canary will work. 
 
 To enable the feature, enable Experimental Web Platform Features:
-chrome://flags/#enable-experimental-web-platform-features
+[chrome://flags/#enable-experimental-web-platform-features](chrome://flags/#enable-experimental-web-platform-features)
 
 See the explainer and demos for how to use the feature from HTML/CSS/JS.
 
