@@ -2,11 +2,11 @@
 
 ### Problem
 
-Currently there are 3 overscroll-behavior values:
+Currently there are 3 `overscroll-behavior` values:
 
-* auto - which allows chaining, local and non-local boundary default actions
-* contain - which allows local boundary default actions, but disallows chaining and non-local boundary default actions
-* none - which disallows chaining, local and non-local boundary default actions
+* `auto` - which allows chaining, local and non-local boundary default actions
+* `contain` - which allows local boundary default actions, but disallows chaining and non-local boundary default actions
+* `none` - which disallows chaining, local and non-local boundary default actions
 
 It would be nice to also have a value that
 
