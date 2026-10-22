@@ -72,6 +72,8 @@ Where:
   - When `infinite`, light rays are parallel everywhere (a directional light).
   - When a finite `<length>` is given (e.g. `600px`), the light sits at that 3D distance from `light-origin`, and shadows diverge based on each element's position relative to the light.
 
+ISSUE: Non-infinite distances can cause non-rectangular shadows since the edge (e.g. trapezoidal shadows). I think this is implementable thought.
+
 #### `light-origin`
 
 ```
@@ -95,6 +97,8 @@ Controls how quickly the shadow's blur radius grows with `box-elevation`:
   - `100%`: `1px` of blur per `1px` of elevation.
 - **`<angle>`**: The angular radius of the light source.
 - **`<length>`**: The physical radius of a finite-distance light source (if distance is `infinite`, a `<length>` softness is treated as `0`).
+
+ISSUE: Anglular/length properties might be more confusing than necessary. Perhaps the percentage or size is enough
 
 #### `light-color`
 
@@ -132,7 +136,8 @@ Inherited: no
 - **Positive `<length>` (e.g. `box-elevation: 8px`):** The element is raised above its surface, generating one `outset` shadow layer per light in the nearest ancestor with `light-source`.
 - **Negative `<length>` (e.g. `box-elevation: -4px`):** The element is recessed into its surface, generating one `inset` shadow layer per light.
 
-**Composition with `box-shadow`:** `box-elevation` does not overwrite `box-shadow`. If an element has both `box-elevation` and `box-shadow`, explicit `box-shadow` layers are painted in front and `box-elevation` shadow layers are painted immediately behind them. Setting `box-elevation` does not create a stacking context or containing block.
+
+Note: There is no interaction with box-shadow (other than compositing after the box shadows).
 
 ## Examples
 
@@ -216,32 +221,26 @@ Other options we considered:
 - **Cartesian 3D coordinates only (`<position> <length>`):** e.g. `light-position: 50% -1000px 2000px`. Simple mental model, but cannot express a true container-size-independent directional light without huge magic numbers.
 - **2D slope multipliers:** e.g. `light-slope: 0.25 0.5` (offset per `1px` of elevation). Easy to reason about in pixels, but doesn't extend to finite-distance point lights.
 
-### 2. Connecting Elevation to `box-shadow`
-
-Having `box-elevation` automatically paint behind explicit `box-shadow` layers avoids the common problem where adding a focus ring wipes out the elevation shadow. However, it means `box-shadow: none` won't clear a `box-elevation` shadow (you have to set `box-elevation: 0px`), and you can't place a manual `box-shadow` layer *behind* the elevation shadow.
-
-Alternatives:
-- **Add an `elevation(<length>)` function inside `box-shadow`:** e.g. `box-shadow: 0 0 0 2px royalblue, elevation(4px)`. This could also be supported alongside `box-elevation` for cases where custom layer ordering is needed.
-- **`box-shadow: auto` keyword:** `box-elevation` only takes effect when `box-shadow` includes `auto`. This is more explicit, but reintroduces the footgun where `box-shadow: 0 0 0 2px blue` clobbers the shadow unless the author remembers to write `, auto`.
-- **Reuse `translateZ()` / `translate`:** Avoids a new elevation property, but transforms create a stacking context, capture `position: fixed` descendants, and visibly scale the element when `perspective` is present.
-
-### 3. Multi-Light Lists vs. Dedicated `light-ambient`
+### 2. Multi-Light Lists vs. Dedicated `light-ambient`
 
 A single directional shadow often looks harsh without a soft overhead ambient shadow. The proposal handles this by allowing a comma-separated list of lights in `light-source`. An alternative (similar to Android's `RenderNode` lighting) is a single `light-source` paired with a dedicated `light-ambient: <softness> <color>` property. Since an ambient light is already expressible as a `0deg 0deg` light layer, a list seems more flexible without adding another property.
 
-### 4. Container Lookup vs. Inheritance
+### 3. Container Lookup vs. Inheritance
 
 In the proposal, `light-source` is non-inherited and any element with `light-source != none` acts as the lighting container for its descendants.
 
 Alternatively, `light-*` could be standard inherited properties. For infinite-distance lights, no container box is needed at all; for finite-distance lights, `light-origin` could resolve against the nearest ancestor with an explicit scoping property (or the viewport by default), or even reference an anchor element via `anchor(--lamp center)`.
 
-### 5. Nested `box-elevation`
+### 4. Nested `box-elevation`
 
 When an elevated child (e.g. `.button { box-elevation: 4px }`) sits inside an elevated parent (`.card { box-elevation: 8px }`), the button casts a `4px` shadow onto the card.
 
 For directional (`infinite` distance) lights, only the child's own `4px` elevation matters. For finite-distance lights, there is an open question of whether the child's 3D position should accumulate its ancestors' elevations (`8px + 4px = 12px`, bringing it slightly closer to the light) or be evaluated strictly locally (`4px`) to avoid tracking cumulative elevation up the tree.
 
-### 6. Naming
+
+ISSUE: The shadow of a nested elevated content may leak beyond the parent elevated content, should it be constrained by the container? Otherwise the math/painted effect can be complicated.
+
+### 5. Naming
 
 We used `light-source` and `box-elevation` for brevity, and because `light-source` could potentially inform other properties like `text-elevation` in the future. If we want to scope this strictly to box shadows, `box-shadow-light` and `box-shadow-elevation` are an option.
 
