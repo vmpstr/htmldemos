@@ -122,9 +122,13 @@ container's scroll marker group container.
 In this example, `.gallery` does not create a sibling pseudo-element box, and
 `#gallery-markers` stays where it is inside `.gallery-header`. Instead,
 `#gallery-markers` serves as the scroll marker group container, acquiring the
-`tablist` role and roving focusgroup behavior from `tabs` mode, and the three
-generated `.slide::scroll-marker` pseudo-element boxes are created as children
-of `#gallery-markers`.
+implicit `tablist` role and roving focusgroup behavior from `tabs` mode, and
+the three generated `.slide::scroll-marker` pseudo-element boxes are created as
+children of `#gallery-markers`. Because `#gallery-markers` is a real DOM
+element, those `tabs` and `links` semantics act as implicit defaults: explicit
+`role`, `aria-*`, `tabindex`, `focusgroup`, and other HTML attributes on the
+element take priority, allowing authors to override or customize the `tabs` or
+`links` behavior as appropriate.
 
 The `.gallery::scroll-marker-group` selector still matches, resolving directly
 to `#gallery-markers` so both `.gallery::scroll-marker-group` and regular
@@ -337,6 +341,24 @@ any generated fallback `::scroll-marker` pseudo-elements: only the
 `:target-current` marker is in the `Tab` order, arrow keys cycle through all
 markers in the group, target elements receive `tabpanel` semantics, and pressing
 `Tab` from the active tab moves focus into its associated target panel.
+
+Because `[scrollmarkergroup]` and `[scrollmarker]` are real DOM elements, those
+mode-assigned roles and states serve only as implicit defaults. Explicit `role`
+and `aria-*` attributes take priority, letting authors customize or enrich the
+accessibility tree in ways that pure pseudo-elements cannot, such as naming the
+group via `aria-labelledby` or labeling icon-only markers with `aria-label`:
+
+```html
+<h2 id="views-heading">Vehicle Views</h2>
+<div id="view-markers" scrollmarkergroup aria-labelledby="views-heading">
+  <button scrollmarker aria-label="Front exterior view">
+    <svg aria-hidden="true"><!-- icon --></svg>
+  </button>
+  <button scrollmarker aria-label="Interior cabin view">
+    <svg aria-hidden="true"><!-- icon --></svg>
+  </button>
+</div>
+```
 
 Unlike `scroll-marker-group: before` and `after`, which synthetically position
 the generated group immediately before or after the scroll container in
