@@ -127,16 +127,12 @@ generated `.slide::scroll-marker` pseudo-element boxes are created as children
 of `#gallery-markers`.
 
 The `.gallery::scroll-marker-group` selector still matches, resolving directly
-to `#gallery-markers`. Declarations in `.gallery::scroll-marker-group`
-participate in the normal cascade alongside any regular selectors matching
-`#gallery-markers` (such as `#gallery-markers` or `.gallery-header > div`),
-while style inheritance continues to flow from `#gallery-markers`'s actual
-parent in the flat tree (`.gallery-header`) rather than from `.gallery`.
-Additionally, the UA stylesheet rule
-`::scroll-marker-group { contain: size !important; }`, which is used on
-generated `before` and `after` groups to prevent layout cycles, does not apply
-when the group is a real element, so `#gallery-markers` sizes naturally around
-its contents.
+to `#gallery-markers` so both `.gallery::scroll-marker-group` and regular
+selectors like `#gallery-markers` apply to the same element, while style
+inheritance continues to flow from `#gallery-markers`'s actual parent in the
+flat tree (`.gallery-header`) rather than from `.gallery`. How pseudo-element
+and regular element rules are prioritized in the cascade, and whether UA size
+containment applies, are discussed in [Open Questions](#open-questions).
 
 ### Unmatched References, Conflicts, and Unbound Groups
 
@@ -233,8 +229,8 @@ thumbnail `<img>` and `<span>` children, receives `tab` semantics and activation
 behavior that scrolls its paired `.view` into view, and matches
 `:target-current`, `:target-before`, and `:target-after` as the user scrolls.
 Just as with `::scroll-marker-group`, rules targeting `.view::scroll-marker` and
-rules targeting `#product-tabs > button` match the same underlying element in
-the normal cascade, inheriting styles from `#product-tabs`.
+rules targeting `#product-tabs > button` match the same underlying element,
+which continues to inherit styles from `#product-tabs`.
 
 ### Fewer `scrollmarker` Elements Than Needed
 
@@ -387,3 +383,94 @@ participate as a full scroll marker group with `:target-current` tracking and
 fallback marker generation. When unbound, the markup remains an ordinary,
 functional `<nav>` of anchor links with no inert custom tags or redundant
 wrappers.
+
+## Open Questions
+
+### Pseudo-Elements Aliasing Real Elements and Cascade Priority
+
+Having `::scroll-marker-group` and `::scroll-marker` refer to existing DOM
+elements introduces a new mechanism in CSS where a pseudo-element selector
+aliases a real element rather than selecting a separate generated sub-element.
+We need to define how declarations from pseudo-element selectors cascade
+relative to declarations from regular selectors matching the same element:
+
+```css
+#product-tabs > button {
+  background: white;
+}
+
+.view::scroll-marker {
+  background: lightgray;
+}
+```
+
+One option is to merge both sets of rules in the normal author cascade and
+compare specificity and source order directly. Another is to give aliased
+pseudo-element rules a distinct cascade priority (for instance, cascading below
+direct element rules as defaults, or above them).
+
+Aliasing also introduces a style-resolution ordering dependency: determining
+which `.view::scroll-marker` (or `.pager::column::scroll-marker`) maps to the
+*n*th `[scrollmarker]` child depends on the scroller's computed
+`scroll-marker-group`, the computed `content` of descendants' `::scroll-marker`
+rules, and, in the case of `::column`, layout itself.
+
+### Layout Dependencies and Size Containment
+
+For generated `before` and `after` groups, CSS Overflow 5 recommends
+`::scroll-marker-group { contain: size !important; }` in the UA stylesheet so
+creating or updating `::scroll-marker` boxes cannot invalidate layout outside
+the group. With real `[scrollmarkergroup]` and `[scrollmarker]` elements,
+changing the number of active markers can affect layout when unused markers
+become `display: none` or fallback pseudo-elements are appended:
+
+```html
+<div style="display: flex; flex-direction: column; height: 100vh;">
+  <div id="markers" scrollmarkergroup>
+    <button scrollmarker>Page 1</button>
+    <button scrollmarker>Page 2</button>
+    <button scrollmarker>Page 3</button>
+  </div>
+  <div class="pager" style="flex: 1; overflow-x: auto; columns: 1;">...</div>
+</div>
+```
+
+If `#markers` wraps onto two lines when all three buttons are shown, `.pager`
+gets less block size, which can change how content fragments into columns. If
+that new column count hides `Page 3` with `display: none`, `#markers` shrinks
+back to one line, growing `.pager` again and risking a layout cycle. Similar
+feedback loops can happen if `.pager::column::scroll-marker` applies
+size-affecting styles to `[scrollmarker]` elements.
+
+Applying `contain: size` (or `contain: size !important`) to
+`[scrollmarkergroup]` elements avoids these cycles, at the cost of breaking
+intrinsic sizing when authors expect a `<div scrollmarkergroup>` to size
+naturally around its child buttons. Alternatives include requiring
+`contain: size` only when `::column::scroll-marker` is involved, or latching
+marker counts across layout passes.
+
+### Overriding `display: none` on Unused Markers
+
+When there are more `[scrollmarker]` children than markers needed, the excess
+elements become `display: none`. It is an open question whether authors can or
+should be able to override that `display: none`.
+
+If unused markers are hidden via an ordinary UA stylesheet rule without
+`!important`, any author rule setting `display` on markers would unintentionally
+keep unused markers visible:
+
+```css
+/* Would this accidentally unhide unused [scrollmarker] buttons? */
+#page-markers > [scrollmarker] {
+  display: inline-flex;
+}
+```
+
+Enforcing `display: none !important` in the UA stylesheet (or suppressing box
+generation directly) avoids that footgun so author `display: inline-flex` rules
+only affect active markers. On the other hand, some designs may want unused
+`[scrollmarker]` elements to remain visible in a disabled or placeholder state
+rather than disappearing. Supporting that intentionally would require deciding
+both how authors opt into showing unused markers (for example, matching
+`:disabled` or a dedicated pseudo-class instead of forcing `display: none`) and
+what activation or focus behavior an unbound marker should have.
