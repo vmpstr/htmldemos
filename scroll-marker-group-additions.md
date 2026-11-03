@@ -6,7 +6,7 @@
 - Keith Cirkel
 - Rob Flack
 
-## Motivation
+## Background
 
 In [CSS Overflow 5](https://drafts.csswg.org/css-overflow-5/#scroll-markers), a
 scroll container can opt into generating a scroll marker group via the
@@ -22,29 +22,25 @@ originating on the root element), operating in either `links` mode (the default)
 or `tabs` mode. Descendants of the scroller (or `::column` fragments in a
 multi-column scroller) whose `::scroll-marker` pseudo-element has a computed
 `content` other than `none` then generate `::scroll-marker` boxes inside that
-group.
+group. Separately, `scroll-target-group: auto` allows authors to group
+`<a href="#id">` anchor elements in the DOM so `:target-current`,
+`:target-before`, and `:target-after` reflect scroll progress across those
+links.
 
-While pure pseudo-elements work well for simple dot indicators and
-self-contained carousels, authors run into two structural limitations in more
-complex interfaces.
+This proposal extends `scroll-marker-group` to bridge generated marker groups
+and author-supplied DOM elements for two additional cases:
 
-First, `before` and `after` can only place the `::scroll-marker-group` box
-immediately adjacent to the scroll container. In practice, designs frequently
-place pagination dots or tab bars inside a separate `<header>`, within a shared
-toolbar alongside headings and action buttons, or in an unrelated grid track.
-Positioning a sibling pseudo-element into another container's layout requires
-fragile CSS Anchor Positioning or fixed-size reservations.
+First, authors may want the scroll marker group itself to be an element placed
+elsewhere in the document tree (such as inside a `<header>`, a shared toolbar,
+or another layout container) so it participates directly in that container's
+flow and DOM order.
 
-Second, `::scroll-marker` pseudo-elements cannot contain rich HTML subtrees
-(such as `<picture>` thumbnails, inline `<svg>` icons, structured multi-line
-labels, or framework-managed markup) and cannot have event listeners attached
-directly to individual markers. Although `scroll-target-group: auto` lets
-authors group ordinary `<a href="#id">` links, it requires maintaining unique
-IDs for every target, only applies to anchor elements rather than `<button>`
-controls, does not provide `tabs` mode semantics (`tablist`/`tab`/`tabpanel`
-roles, roving `focusgroup` navigation, and active-panel focus scoping), and
-cannot adapt when markers are generated dynamically from layout such as
-`::column::scroll-marker`.
+Second, authors may want individual scroll markers to be real DOM elements (such
+as `<button>` elements containing `<picture>` thumbnails, `<svg>` icons, or
+structured HTML, with direct event listeners and ARIA attributes) while still
+using `scroll-marker-group`'s `links` and `tabs` modes, automatic order-based
+pairing with targets, and dynamic adaptation when marker counts depend on layout
+such as `::column::scroll-marker`.
 
 ## Proposal Overview
 
@@ -344,9 +340,9 @@ markers in the group, target elements receive `tabpanel` semantics, and pressing
 
 Because `[scrollmarkergroup]` and `[scrollmarker]` are real DOM elements, those
 mode-assigned roles and states serve only as implicit defaults. Explicit `role`
-and `aria-*` attributes take priority, letting authors customize or enrich the
-accessibility tree in ways that pure pseudo-elements cannot, such as naming the
-group via `aria-labelledby` or labeling icon-only markers with `aria-label`:
+and `aria-*` attributes take priority, letting authors customize the
+accessibility tree directly in markup, such as naming the group via
+`aria-labelledby` or labeling icon-only markers with `aria-label`:
 
 ```html
 <h2 id="views-heading">Vehicle Views</h2>
@@ -402,9 +398,8 @@ where HTML's content model and parser only allow `<li>` as direct children:
 
 When a scroll container binds to `#chapter-nav`, the `<nav>` and its links
 participate as a full scroll marker group with `:target-current` tracking and
-fallback marker generation. When unbound, the markup remains an ordinary,
-functional `<nav>` of anchor links with no inert custom tags or redundant
-wrappers.
+fallback marker generation. When unbound, the markup remains an ordinary `<nav>`
+of anchor links.
 
 ## Open Questions
 
@@ -489,10 +484,72 @@ keep unused markers visible:
 ```
 
 Enforcing `display: none !important` in the UA stylesheet (or suppressing box
-generation directly) avoids that footgun so author `display: inline-flex` rules
-only affect active markers. On the other hand, some designs may want unused
-`[scrollmarker]` elements to remain visible in a disabled or placeholder state
-rather than disappearing. Supporting that intentionally would require deciding
-both how authors opt into showing unused markers (for example, matching
-`:disabled` or a dedicated pseudo-class instead of forcing `display: none`) and
-what activation or focus behavior an unbound marker should have.
+generation directly) prevents that unintended override so author
+`display: inline-flex` rules only affect active markers. On the other hand, some
+designs may want unused `[scrollmarker]` elements to remain visible in a
+disabled or placeholder state rather than disappearing. Supporting that
+intentionally would require deciding both how authors opt into showing unused
+markers (for example, matching `:disabled` or a dedicated pseudo-class instead
+of forcing `display: none`) and what activation or focus behavior an unbound
+marker should have.
+
+### Referencing IDs in CSS vs. HTML Attribute Linkage
+
+Referencing DOM IDs directly in CSS via `<id-selector>` has precedent in
+features like `element(#id)`, yet similar mechanisms have been avoided elsewhere
+in CSS (for example, `@scroll-timeline` originally used `selector(#id)` before
+moving to CSS-defined `--dashed-ident` names).
+
+Because this proposal already introduces markup on the marker group element, the
+association between the scroller and the marker group could instead be expressed
+as an HTML IDREF in either direction, similar to `for`, `popovertarget`, or
+`commandfor`:
+
+```html
+<!-- Option A: Group references the scroller -->
+<div scrollmarkergroupfor="gallery">...</div>
+<div id="gallery" class="gallery">...</div>
+
+<!-- Option B: Scroller references the group -->
+<div id="gallery-markers">...</div>
+<div class="gallery" scrollmarkergroup="gallery-markers">...</div>
+```
+
+Putting the IDREF in HTML avoids referencing DOM IDs from CSS (another CSS-only
+option would be pairing elements via `--dashed-ident` names, similar to
+`anchor-name` or `scroll-timeline-name`). At the same time, whether a container
+acts as a carousel and whether its markers operate in `links` or `tabs` mode is
+often controlled conditionally in CSS via `@media` or `@container` queries. If
+the element association moves to HTML, `scroll-marker-group` in CSS would still
+need a way (such as `scroll-marker-group: auto tabs` vs. `none`) to activate
+that association and choose between `links` and `tabs` modes without mutating
+DOM attributes.
+
+### DOM-Order Pairing vs. Explicit Per-Marker Target References
+
+Pairing `[scrollmarker]` elements to targets in DOM order avoids maintaining
+unique IDs on every item and works for targets that have no DOM element of their
+own, such as `::column::scroll-marker` fragments. However, positional pairing
+can be brittle when slides are dynamically inserted, filtered, or conditionally
+hidden in CSS, since skipping or adding one slide shifts which `[scrollmarker]`
+element binds to every subsequent slide unless the marker list is updated to
+match.
+
+To handle that, `scrollmarker` (or `scrollmarkerfor`) could optionally accept an
+IDREF linking a marker directly to a specific slide:
+
+```html
+<div id="product-tabs" scrollmarkergroup>
+  <button scrollmarker="overview">Overview</button>
+  <button scrollmarker="specs">Specs</button>
+  <button scrollmarker="reviews">Reviews</button>
+</div>
+```
+
+We should consider whether `scrollmarker` should remain purely positional
+(leaving explicit ID targeting to `<a href="#id">` with `scroll-target-group`)
+or support an optional target IDREF. Supporting optional IDREFs would also
+require defining how explicitly targeted markers and bare positional
+`scrollmarker` elements interact when mixed in the same group, and what happens
+when a referenced slide is hidden (`display: none`) or does not generate a
+`::scroll-marker`.
