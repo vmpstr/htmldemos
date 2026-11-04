@@ -47,12 +47,12 @@ such as `::column::scroll-marker`.
 We propose a two-part extension that lets authors progressively back
 `::scroll-marker-group` and `::scroll-marker` with real DOM elements:
 
-1. **Element-backed marker groups:** Extend `scroll-marker-group` to accept an
-   `<id-selector>` (alongside `links` or `tabs`) referencing an element in the
-   page marked with a `scrollmarkergroup` attribute. That element becomes the
-   scroll marker group instead of creating a new pseudo-element box, while
-   `::scroll-marker-group` continues to work as a selector matching that
-   element.
+1. **Element-backed marker groups:** Extend `scroll-marker-group` to accept a
+   fragment `<url>` (such as `url(#markers)`, alongside `links` or `tabs`)
+   referencing an element in the page marked with a `scrollmarkergroup`
+   attribute. That element becomes the scroll marker group instead of creating a
+   new pseudo-element box, while `::scroll-marker-group` continues to work as a
+   selector matching that element.
 2. **Element-backed markers:** Direct children of that `scrollmarkergroup`
    element can be marked with a `scrollmarker` attribute. When scroll markers
    are generated for the scroller, they bind in DOM order to those
@@ -65,18 +65,23 @@ We propose a two-part extension that lets authors progressively back
 
 ## Referencing a Scroll Marker Group Element
 
-The `scroll-marker-group` property grammar is extended with `<id-selector>`:
+The `scroll-marker-group` property grammar is extended with `<url>`:
 
 ```
 Name: scroll-marker-group
-Value: none | [ [ before | after | <id-selector> ] || [ links | tabs ] ]
+Value: none | [ [ before | after | <url> ] || [ links | tabs ] ]
 ```
 
 As with `before` and `after`, omitting the mode keyword defaults to `links`.
-When an `<id-selector>` is specified, the user agent looks up the first element
-in tree order within the same tree scope matching that ID. If that element has
-the boolean `scrollmarkergroup` HTML attribute, it becomes the scroll
-container's scroll marker group container.
+Following the same [CSS Values 4 fragment URL][local-urls] convention used by
+`clip-path`, `filter`, and `mask-image`, `<url>` is written as a local fragment
+reference such as `url(#gallery-markers)`, avoiding syntax conflicts with CSS
+keywords or selectors. When specified, the user agent resolves the fragment as a
+tree-scoped ID reference to the first matching element in tree order within the
+same tree scope. If that element has the boolean `scrollmarkergroup` HTML
+attribute, it becomes the scroll container's scroll marker group container.
+
+[local-urls]: https://drafts.csswg.org/css-values-4/#local-urls
 
 ```html
 <header class="gallery-header">
@@ -95,7 +100,7 @@ container's scroll marker group container.
 .gallery {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scroll-marker-group: #gallery-markers tabs;
+  scroll-marker-group: url(#gallery-markers) tabs;
 }
 
 .gallery::scroll-marker-group {
@@ -138,15 +143,15 @@ containment applies, are discussed in [Open Questions](#open-questions).
 
 Requiring the explicit `scrollmarkergroup` attribute ensures that a stylesheet
 cannot accidentally turn an arbitrary page element into an interactive
-navigation or tablist widget. If the `<id-selector>` does not match any element
-in the same tree scope, or if the matched element does not have the
+navigation or tablist widget. If the `<url>` is not a local fragment URL, does
+not match any element in the same tree scope, or matches an element without the
 `scrollmarkergroup` attribute, no scroll marker group is established and the
 scroller behaves as if `scroll-marker-group: none` were set:
 
 ```html
 <!-- Missing `scrollmarkergroup`: #not-a-group is ignored and left untouched -->
 <div id="not-a-group">Static content</div>
-<div class="scroller" style="scroll-marker-group: #not-a-group;">...</div>
+<div class="scroller" style="scroll-marker-group: url(#not-a-group);">...</div>
 ```
 
 If multiple scroll containers reference the same `scrollmarkergroup` element,
@@ -206,7 +211,7 @@ child element:
 .product-views {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scroll-marker-group: #product-tabs tabs;
+  scroll-marker-group: url(#product-tabs) tabs;
 }
 
 .view::scroll-marker {
@@ -259,7 +264,7 @@ element:
 .deck {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scroll-marker-group: #deck-nav links;
+  scroll-marker-group: url(#deck-nav) links;
 }
 
 .slide::scroll-marker {
@@ -301,7 +306,7 @@ depend on layout, such as column pagination with `::column::scroll-marker`:
   overflow-x: auto;
   columns: 1;
   scroll-snap-type: x mandatory;
-  scroll-marker-group: #page-markers tabs;
+  scroll-marker-group: url(#page-markers) tabs;
 }
 
 .article-pager::column {
@@ -358,7 +363,7 @@ accessibility tree directly in markup, such as naming the group via
 
 Unlike `scroll-marker-group: before` and `after`, which synthetically position
 the generated group immediately before or after the scroll container in
-sequential focus order, an `<id-selector>` group remains at its natural DOM
+sequential focus order, a `url(#id)`-referenced group remains at its natural DOM
 position in focus order (aside from `tabs` mode directing `Tab` from the active
 tab into its target panel). Finally, because `[scrollmarkergroup]` and
 `[scrollmarker]` nodes are real DOM elements, focusing or activating them
@@ -495,10 +500,10 @@ marker should have.
 
 ### Referencing IDs in CSS vs. HTML Attribute Linkage
 
-Referencing DOM IDs directly in CSS via `<id-selector>` has precedent in
-features like `element(#id)`, yet similar mechanisms have been avoided elsewhere
-in CSS (for example, `@scroll-timeline` originally used `selector(#id)` before
-moving to CSS-defined `--dashed-ident` names).
+Referencing DOM IDs in CSS via `url(#id)` has precedent in properties like
+`clip-path`, `filter`, and `mask-image`, yet referencing element IDs from CSS
+has been avoided in other features (for example, `@scroll-timeline` originally
+used `selector(#id)` before moving to CSS-defined `--dashed-ident` names).
 
 Because this proposal already introduces markup on the marker group element, the
 association between the scroller and the marker group could instead be expressed
@@ -553,3 +558,66 @@ require defining how explicitly targeted markers and bare positional
 `scrollmarker` elements interact when mixed in the same group, and what happens
 when a referenced slide is hidden (`display: none`) or does not generate a
 `::scroll-marker`.
+
+### Is Matching in DOM Order Sufficient: CSS References, Templates, and Labeling
+
+Requiring authors to supply *N* `[scrollmarker]` child elements matched by DOM
+order also raises questions from the CSS and authoring ergonomics side.
+
+First, when every marker shares the same structure, authors might prefer
+providing a single template child inside `[scrollmarkergroup]` whose markup,
+attributes, or event listeners apply to all generated markers rather than
+repeating *N* similar elements. However, a single template falls short when
+each marker needs its own accessible label or distinct content (such as
+thumbnails or `"Page 1"`, `"Page 2"` labels), and browser-managed cloning or
+removal of real DOM elements would introduce web-exposed lifecycle complexity
+that matching author-supplied DOM elements avoids.
+
+Second, when markers do have distinct labels or content, we should consider
+whether sequential DOM-order matching is enough or whether `::scroll-marker`
+itself needs a way in CSS to directly reference its backing `[scrollmarker]`
+element:
+
+```css
+#overview-slide::scroll-marker {
+  /* Hypothetical direct reference from ::scroll-marker to a marker element */
+  scroll-marker-element: url(#overview-tab);
+}
+```
+
+Even with per-element labels, layout-driven markers like
+`::column::scroll-marker` present a labeling challenge: if resizing the viewport
+reflows two columns (`"First page, left"` and `"First page, right"`) into new
+column breaks (`"First page"` and `"Second page"`), static HTML labels on
+`[scrollmarker]` elements cannot automatically update to describe the new column
+contents without script (whereas pure `::column::scroll-marker` pseudo-elements
+typically rely on CSS `counter()` values or unnumbered indicators).
+
+### Behavior of `<a href>` Elements Used as Scroll Markers
+
+Because `scrollmarker` is an attribute that can be placed on any child element,
+authors may place it on `<a href="...">` links (for example, inside
+`<nav scrollmarkergroup>`). That creates a potential conflict if a link's `href`
+disagrees with the target assigned by DOM-order pairing:
+
+```html
+<nav id="markers" scrollmarkergroup>
+  <!-- First [scrollmarker] in DOM order, yet its href points to #slide-2 -->
+  <a href="#slide-2" scrollmarker>Slide 2</a>
+  <a href="#slide-1" scrollmarker>Slide 1</a>
+</nav>
+```
+
+Under positional pairing, the first `<a>` acts as the visual marker for the
+first slide (matching `:target-current` when slide 1 is scrolled into view), yet
+following its `href` on activation would jump to `#slide-2` (or navigate away if
+`href` points to another URL).
+
+We need to define how `[scrollmarker]` interacts with `<a href>` navigation.
+Options include having active `[scrollmarker]` binding supersede default link
+navigation so activation always scrolls to the paired target (treating a
+mismatched `href` as an authoring error), having `<a href="#id" scrollmarker>`
+use its `href` target instead of DOM-order pairing, or disallowing
+`scrollmarker` on `<a href>` elements in favor of `scroll-target-group: auto`
+(at the cost of losing `<a href>` fallback when `scroll-marker-group` is
+`none`).
