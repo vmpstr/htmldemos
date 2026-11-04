@@ -35,8 +35,8 @@ approach can miss several cases:
 
 Generally, maintaining a `querySelectorAll` driven implementation can fall
 behind as new features are implemented. With `nextFocusable()` and
-`previousFocusable()`, a focus trap can query the browser's sequential focus
-order directly.
+`previousFocusable()` (scoped via `{ stayWithin: container }`), a focus trap can
+query the browser's sequential focus order directly.
 
 ### 2. Saving and Restoring Focus
 
@@ -52,7 +52,8 @@ CSS carousels introduce focusable `::scroll-marker` and `::scroll-button()`
 pseudo-elements that participate in `Tab` order. Authors and testing tools need
 to perform several operations on these pseudo-elements:
 
-* Check whether a pseudo-element currently holds focus (`document.activeFocusable`).
+* Check whether a pseudo-element currently holds focus
+  (`document.activeFocusable`).
 * Programmatically focus a specific pseudo-element
   (`carousel.pseudo("::scroll-button(inline-end)")?.focus()`).
 * Step forward or backward from a pseudo-element in focus order.
@@ -77,6 +78,16 @@ We propose introducing a `Focusable` interface, adding `activeFocusable` to
 to traverse focus order:
 
 ```idl
+enum FocusNavigationMode {
+  "browser-default",
+  "web-default"
+};
+
+dictionary FocusNavigationOptions {
+  (Element or CSSPseudoElement)? stayWithin = null;
+  FocusNavigationMode mode = "browser-default";
+};
+
 [Exposed=Window]
 interface Focusable {
   // Construct a Focusable from an Element or CSSPseudoElement.
@@ -98,8 +109,8 @@ interface Focusable {
   undefined focus(optional FocusOptions options = {});
 
   // Sequential focus navigation starting from this Focusable.
-  Focusable? nextFocusable();
-  Focusable? previousFocusable();
+  Focusable? nextFocusable(optional FocusNavigationOptions options = {});
+  Focusable? previousFocusable(optional FocusNavigationOptions options = {});
 };
 
 partial interface mixin DocumentOrShadowRoot {
@@ -108,14 +119,14 @@ partial interface mixin DocumentOrShadowRoot {
 
 // Convenience enhancements to avoid requiring creating a new Focusable.
 partial interface Element {
-  Focusable? nextFocusable();
-  Focusable? previousFocusable();
+  Focusable? nextFocusable(optional FocusNavigationOptions options = {});
+  Focusable? previousFocusable(optional FocusNavigationOptions options = {});
 };
 
 partial interface CSSPseudoElement {
   undefined focus(optional FocusOptions options = {});
-  Focusable? nextFocusable();
-  Focusable? previousFocusable();
+  Focusable? nextFocusable(optional FocusNavigationOptions options = {});
+  Focusable? previousFocusable(optional FocusNavigationOptions options = {});
 };
 ```
 
@@ -160,17 +171,93 @@ focused item:
 * **No focus within the document**: `activeFocusable` is null when the document
   doesn't have any focused item within it.
 
+### Navigation Options (`FocusNavigationOptions`)
+
+Both `nextFocusable()` and `previousFocusable()` accept an optional
+`FocusNavigationOptions` dictionary with two options:
+
+* **`stayWithin` (`Element` or `CSSPseudoElement`, default `null`)**:
+  Constrains focus navigation to the **inclusive** subtree rooted at
+  `stayWithin`:
+  * When `stayWithin` is an `Element`, the subtree includes `stayWithin` itself,
+    any pseudo-elements originating on `stayWithin`, and all descendant elements
+    (along with their pseudo-elements and shadow trees).
+  * When `stayWithin` is a `CSSPseudoElement`, the subtree includes `stayWithin`
+    itself and any nested sub-pseudo-elements within it (for example,
+    `::scroll-marker` items inside a `::scroll-marker-group`).
+  * If advancing to the next or previous focusable item would fall outside of
+    `stayWithin`'s inclusive subtree (or if the receiver itself is outside that
+    subtree), the method returns `null` rather than leaving the subtree or
+    wrapping around.
+
+Consider the following DOM:
+```html
+<button id="before">Before</button>
+<div id="dialog" tabindex="0">
+  <button id="save">Save</button>
+  <button id="cancel">Cancel</button>
+</div>
+<button id="after">After</button>
+```
+
+Calling `nextFocusable({ stayWithin: dialog })` repeatedly starting from
+`dialog` visits `#save` and `#cancel`, and then returns `null` instead of moving
+to `#after`. Symmetrically, calling `previousFocusable({ stayWithin: dialog })`
+from `#save` returns `dialog` (because `stayWithin` is inclusive and `#dialog`
+has `tabindex="0"`), and calling `previousFocusable({ stayWithin: dialog })` on
+`dialog` returns `null` instead of moving to `#before`.
+
+* **`mode` (`FocusNavigationMode`, default `"browser-default"`)**: Dictates
+  which focusable items are included in the sequential focus order when browser
+  or platform defaults differ from the HTML specification:
+  * **`"browser-default"`**: Follows the browser's active sequential focus
+    order, matching what pressing `Tab` or `Shift+Tab` visits under current
+    browser and OS settings. Some browsers elide certain elements from their
+    default focus order—for example, WebKit supports two focus orders, where the
+    browser default on macOS skips links (`<a href>`) and certain controls
+    unless full keyboard access is enabled (or `Option+Tab` is used). This mode
+    is suited for focus traps and `Tab` interceptors that must match the user's
+    native `Tab` behavior.
+  * **`"web-default"`**: Follows the sequential focus order defined by the HTML
+    and CSS specifications, returning all sequentially focusable elements and
+    pseudo-elements without eliding items based on browser- or OS-specific `Tab`
+    filtering (corresponding to WebKit's spec-based / `Option+Tab` focus order).
+    This mode is suited for custom keyboard navigation (such as arrow-key
+    toolbars), skip links, and automated testing that expect consistent
+    focusable targets across browsers and platforms.
+
+Consider a form with an inline link in a browser whose `"browser-default"` focus
+order elides links:
+```html
+<form id="login">
+  <input id="user" type="text">
+  <a id="forgot" href="/reset">Forgot password?</a>
+  <input id="pass" type="password">
+</form>
+```
+
+Starting from `user`:
+* `user.nextFocusable({ mode: "browser-default" })` elides `<a#forgot>` and
+  returns `<input#pass>`.
+* `user.nextFocusable({ mode: "web-default" })` returns `<a#forgot>`, and
+  calling `nextFocusable({ mode: "web-default" })` on that result returns
+  `<input#pass>`.
+
 ### Focus Navigation Behavior and Caveats
 
 * **Sequential focus order**: `nextFocusable()` and `previousFocusable()` follow
-  the browser's sequential focus navigation order (`Tab` / `Shift+Tab`,
-  including `tabindex` ordering and CSS `reading-flow`) starting from the
-  receiver (`Element`, `CSSPseudoElement`, or `Focusable`), even if the receiver
-  is not currently focused or is not focusable itself (such as
-  `document.documentElement`). Elements that do not participate in sequential
-  focus navigation (such as those with `tabindex="-1"`, `disabled`, `inert`, or
-  `display: none`) are skipped. This follows [Sequential Focus
-  Navigation](https://html.spec.whatwg.org/multipage/interaction.html#sequential-focus-navigation) and [reading-flow](https://drafts.csswg.org/css-display-4/#reading-flow).
+  sequential focus navigation order (`Tab` / `Shift+Tab`, including `tabindex`
+  ordering and CSS `reading-flow`) starting from the receiver (`Element`,
+  `CSSPseudoElement`, or `Focusable`), even if the receiver is not currently
+  focused or is not focusable itself (such as `document.documentElement`).
+  Elements that do not participate in sequential focus navigation (such as those
+  with `tabindex="-1"`, `disabled`, `inert`, or `display: none`, as well as
+  elements elided by `mode: "browser-default"`) are skipped. This follows
+  [Sequential Focus Navigation][sfn] and [reading-flow][reading-flow].
+
+[sfn]:
+https://html.spec.whatwg.org/multipage/interaction.html#sequential-focus-navigation
+[reading-flow]: https://drafts.csswg.org/css-display-4/#reading-flow
 
 Consider the following DOM:
 ```html
@@ -248,18 +335,35 @@ Consider a CSS carousel with scroll buttons and a scroll marker group:
 ```
 
 Here is the chain of `Focusable`s as would be returned by repeated calls to
-`nextFocusable()` starting from `document.documentElement`:
+`nextFocusable({ mode: "web-default" })` starting from
+`document.documentElement`:
 ```
-Focusable { shadowHost: null, target: <div#slide-1>, pseudoElement: <div#slide-1>::scroll-marker }
+Focusable {
+  shadowHost: null,
+  target: <div#slide-1>,
+  pseudoElement: <div#slide-1>::scroll-marker
+}
   |
   v
-Focusable { shadowHost: null, target: <div#carousel>, pseudoElement: <div#carousel>::scroll-button(inline-start) }
+Focusable {
+  shadowHost: null,
+  target: <div#carousel>,
+  pseudoElement: <div#carousel>::scroll-button(inline-start)
+}
   |
   v
-Focusable { shadowHost: null, target: <div#carousel>, pseudoElement: <div#carousel>::scroll-button(inline-end) }
+Focusable {
+  shadowHost: null,
+  target: <div#carousel>,
+  pseudoElement: <div#carousel>::scroll-button(inline-end)
+}
   |
   v
-Focusable { shadowHost: null, target: <a#slide-link>, pseudoElement: null }
+Focusable {
+  shadowHost: null,
+  target: <a#slide-link>,
+  pseudoElement: null
+}
   |
   v
 null
@@ -269,7 +373,8 @@ null
   across a shadow host, the shadow tree and any light DOM slotted into it are
   treated as a single entry in the `nextFocusable()` / `previousFocusable()`
   chain, assuming there is anything focusable inside:
-  * Stepping onto the shadow host yields `{ shadowHost: host, target: null, pseudoElement: null }`.
+  * Stepping onto the shadow host yields
+    `{ shadowHost: host, target: null, pseudoElement: null }`.
   * Calling `nextFocusable()` on that `Focusable` advances past the entire
     shadow tree (and its slotted light DOM) to the next focusable item after the
     shadow host, rather than repeatedly returning the same shadow host.
@@ -306,8 +411,10 @@ null
 ```
 
 * **Boundary return value**: When called on the last focusable item in the
-  document, `nextFocusable()` returns `null`. Symmetrically,
-  `previousFocusable()` returns `null` when there is no prior focusable item.
+  document (or when advancing would fall outside the `stayWithin` subtree),
+  `nextFocusable()` returns `null`. Symmetrically, `previousFocusable()` returns
+  `null` when there is no prior focusable item within the document (or within
+  `stayWithin`).
 * **Snapshot of current page state**: Because moving focus (or running script in
   between steps) can mutate the DOM or trigger style changes (e.g.,
   `:focus-within` revealing new elements, or `focus` event listeners modifying
@@ -347,28 +454,49 @@ previouslyFocused?.focus();
 function handleTabInContainer(event, container) {
   if (event.key !== "Tab") return;
 
+  const options = { stayWithin: container };
   const current = document.activeFocusable;
   const next = event.shiftKey
-    ? current?.previousFocusable()
-    : current?.nextFocusable();
+    ? current?.previousFocusable(options)
+    : current?.nextFocusable(options);
 
-  const nextNode = next?.target ?? next?.shadowHost;
-  if (!nextNode || !container.contains(nextNode)) {
+  if (!next) {
     event.preventDefault();
+    const first = container.nextFocusable(options);
     if (event.shiftKey) {
-      let item = container.nextFocusable();
+      let item = first;
       let last = null;
-      while (item && container.contains(item.target ?? item.shadowHost)) {
+      while (item) {
         last = item;
-        item = item.nextFocusable();
+        item = item.nextFocusable(options);
       }
       last?.focus();
     } else {
-      const first = container.nextFocusable();
-      if (first && container.contains(first.target ?? first.shadowHost)) {
-        first.focus();
-      }
+      first?.focus();
     }
+  }
+}
+```
+
+### Custom arrow-key navigation within a toolbar
+
+Using `stayWithin` together with `mode: "web-default"` ensures arrow keys stay
+within the toolbar and visit every focusable button or link even in browsers
+whose default `Tab` order elides links or buttons:
+
+```js
+function handleToolbarArrowKey(event, toolbar) {
+  if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+
+  const options = { stayWithin: toolbar, mode: "web-default" };
+  const current = document.activeFocusable;
+  const next = event.key === "ArrowRight"
+    ? current?.nextFocusable(options)
+    : current?.previousFocusable(options);
+
+  if (next) {
+    event.preventDefault();
+    next.focus();
   }
 }
 ```
@@ -380,12 +508,12 @@ returns `null` yields all currently focusable items in tab order (with each
 focusable shadow host represented as a single entry):
 
 ```js
-function getAllFocusables() {
+function getAllFocusables(options = {}) {
   const focusables = [];
-  let curr = document.documentElement.nextFocusable();
+  let curr = document.documentElement.nextFocusable(options);
   while (curr) {
     focusables.push(curr);
-    curr = curr.nextFocusable();
+    curr = curr.nextFocusable(options);
   }
   return focusables;
 }
@@ -424,9 +552,10 @@ partial interface Focusable {
   `ShadowRoot` is included in `shadowRoots`, focusable items inside that shadow
   tree (or slotted into it) populate `target` (and `pseudoElement`, if
   applicable) alongside `shadowHost`.
-* **Constructing from an existing `Focusable`**: `new Focusable(focusable, shadowRoots)`
-  creates a new `Focusable` with the given `shadowRoots` replacing any previous
-  set (_perhaps we want to append to the set?_):
+* **Constructing from an existing `Focusable`**:
+  `new Focusable(focusable, shadowRoots)` creates a new `Focusable` with the
+  given `shadowRoots` replacing any previous set (_perhaps we want to append to
+  the set?_):
   * If the initial `Focusable` was a shadow host with `target: null` that
     originated from a specific inner focus target (such as
     `document.activeFocusable` when an element inside that shadow root is
@@ -443,22 +572,43 @@ partial interface Focusable {
 _Issue: is document.activeFocusable always shadowRoot-free?_
 
 Using the same `<my-widget>` DOM from earlier, here is the chain of `Focusable`s
-as would be returned by repeated calls to `nextFocusable()` starting from
+as would be returned by repeated calls to
+`nextFocusable({ mode: "web-default" })` starting from
 `new Focusable(document.documentElement, [myWidget.shadowRoot])`:
 ```
-Focusable { shadowHost: null, target: <button#before>, pseudoElement: null }
+Focusable {
+  shadowHost: null,
+  target: <button#before>,
+  pseudoElement: null
+}
   |
   v
-Focusable { shadowHost: <my-widget>, target: <button#inner-1>, pseudoElement: null }
+Focusable {
+  shadowHost: <my-widget>,
+  target: <button#inner-1>,
+  pseudoElement: null
+}
   |
   v
-Focusable { shadowHost: <my-widget>, target: <a#slotted>, pseudoElement: null }
+Focusable {
+  shadowHost: <my-widget>,
+  target: <a#slotted>,
+  pseudoElement: null
+}
   |
   v
-Focusable { shadowHost: <my-widget>, target: <button#inner-2>, pseudoElement: null }
+Focusable {
+  shadowHost: <my-widget>,
+  target: <button#inner-2>,
+  pseudoElement: null
+}
   |
   v
-Focusable { shadowHost: null, target: <button#after>, pseudoElement: null }
+Focusable {
+  shadowHost: null,
+  target: <button#after>,
+  pseudoElement: null
+}
   |
   v
 null
@@ -481,13 +631,13 @@ const detailed = new Focusable(active, [myWidget.shadowRoot]);
 #### Traversing focusable items across known shadow roots
 
 ```js
-function getAllFocusablesWithShadowRoots(shadowRoots) {
+function getAllFocusablesWithShadowRoots(shadowRoots, options = {}) {
   const focusables = [];
   const root = new Focusable(document.documentElement, shadowRoots);
-  let curr = root.nextFocusable();
+  let curr = root.nextFocusable(options);
   while (curr) {
     focusables.push(curr);
-    curr = curr.nextFocusable();
+    curr = curr.nextFocusable(options);
   }
   return focusables;
 }
@@ -515,16 +665,17 @@ can trivially construct it in user space (as shown in the example above).
 ### Returning a shadow host repeatedly for each internal focusable item
 
 We considered having `nextFocusable()` step through every focusable item inside
-an unexposed shadow tree while redacting each one to `{ shadowHost: host, target: null }`.
-We rejected this approach for two reasons:
-1. Calling `nextFocusable()` in a loop would return `{ shadowHost: host, target: null }`
-   multiple times in a row (once per internal focusable item), producing
-   duplicate entries with no new information, other than leaking the number of
-   focusables within the shadow host.
+an unexposed shadow tree while redacting each one to
+`{ shadowHost: host, target: null }`. We rejected this approach for two reasons:
+1. Calling `nextFocusable()` in a loop would return
+   `{ shadowHost: host, target: null }` multiple times in a row (once per
+   internal focusable item), producing duplicate entries with no new
+   information, other than leaking the number of focusables within the shadow
+   host.
 2. Slotted light DOM elements are interleaved with shadow tree elements in focus
    order; exposing slotted elements while redacting shadow elements would cause
-   `nextFocusable()` to alternate between light DOM targets and `{ shadowHost: host, target: null }`.
+   `nextFocusable()` to alternate between light DOM targets and
+   `{ shadowHost: host, target: null }`.
 
 Treating the shadow tree (and its slotted light DOM) as a single entry by
 default avoids both issues.
-
